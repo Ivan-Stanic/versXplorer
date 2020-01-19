@@ -1,0 +1,1 @@
+export const paddingCorrection: number = 10;
