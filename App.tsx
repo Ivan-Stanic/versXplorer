@@ -10,10 +10,11 @@ import {LaunchList} from './LaunchList';
 import { paddingCorrection } from './Constants';
 
 interface IHeaderScroll {
-  setScrollValues (headerTopPadding: number, scrollDirection: string) : void;
+  setScrollValues (headerTopPadding: number) : void;
+  setPaddingValues (bottomPadding: number) : void;
 };
 
-export let HeaderScrollContext = React.createContext<IHeaderScroll>({setScrollValues: (headerTopPadding, scrollDirection) => {}});
+export let HeaderScrollContext = React.createContext<IHeaderScroll>({setScrollValues: (headerTopPadding) => {}, setPaddingValues: (bottomPadding) => {}});
 
 let initialLaunchData: IAllLaunches = {info: 'Connencting...'};
 export let LaunchContext = React.createContext(initialLaunchData);
@@ -23,6 +24,8 @@ interface IState {
   launchData: IAllLaunches;
   scrollY: any;
   headerHeight: any;
+  animatedTopMargin: any;
+  animatedBottomPadding: any;
 }
 
 export default class App extends React.Component<{}, IState> {
@@ -31,11 +34,14 @@ export default class App extends React.Component<{}, IState> {
 
     this.findHeaderDimensions = this.findHeaderDimensions.bind(this);
     this.updateHeaderVisibility = this.updateHeaderVisibility.bind(this);
+    this.updateBottomPadding = this.updateBottomPadding.bind(this);
 
     this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/15',
                   launchData: initialLaunchData,
-                  scrollY: new Animated.Value(0),
+                  scrollY: new Animated.Value(0.1),
                   headerHeight: new Animated.Value(0),
+                  animatedTopMargin: new Animated.Value(0.1),
+                  animatedBottomPadding: new Animated.Value(0),
                   };
   }
 
@@ -43,20 +49,51 @@ export default class App extends React.Component<{}, IState> {
     this.setState({launchData: await askForData(this.state.launchURL)});
   }
 
- updateHeaderVisibility = (headerTopPadding: number, scrollDirection: string) => {
+ updateHeaderVisibility = (headerTopPadding: number) => {
     if (parseInt(JSON.stringify(this.state.scrollY)) != headerTopPadding) {
-      Animated.timing(this.state.scrollY,
-        {toValue: headerTopPadding,
-        duration: 100,}).start();
+      let newValue: number;
+      if (headerTopPadding == -9999) {
+        newValue = -parseInt(JSON.stringify(this.state.headerHeight));
+      } else {
+        newValue = headerTopPadding;
+      }
+      Animated.parallel([
+        Animated.timing(this.state.scrollY,
+          {toValue: newValue,
+            isInteraction: false,
+          duration: 150,}),
+        Animated.timing(this.state.animatedTopMargin,
+          {toValue: newValue + parseInt(JSON.stringify(this.state.headerHeight)),
+            isInteraction: false,
+          duration: 0,}),
+      ]).start();
+    }
+  }
+
+  updateBottomPadding = (bottomPadding: number) => {
+    if (parseInt(JSON.stringify(this.state.animatedBottomPadding)) != bottomPadding) {
+      Animated.timing(this.state.animatedBottomPadding,
+        {toValue: bottomPadding,
+          isInteraction: false,
+        duration: 20,}).start();
     }
   }
 
   findHeaderDimensions = (layout: any) => {
     const {x, y, width, height} = layout;
-    Animated.timing(this.state.headerHeight,
-      {toValue: parseInt(JSON.stringify(this.state.scrollY)) + height,
-      duration: 1,}).start();
-    /* this.setState({headerHeight: height}); */
+    const currentScrollY: number = parseInt(JSON.stringify(this.state.scrollY));
+    if (currentScrollY != height) {
+      Animated.sequence([
+        Animated.timing(this.state.headerHeight,
+          {toValue: height,
+            isInteraction: false,
+          duration: 0,}),
+        Animated.timing(this.state.animatedTopMargin,
+          {toValue: currentScrollY + height,
+            isInteraction: false,
+          duration: 0,}),
+      ]).start();
+    }
   }
 
   
@@ -71,7 +108,7 @@ export default class App extends React.Component<{}, IState> {
       } else {
         
         return (
-          <HeaderScrollContext.Provider value = {{setScrollValues: this.updateHeaderVisibility}}>
+          <HeaderScrollContext.Provider value = {{setScrollValues: this.updateHeaderVisibility, setPaddingValues: this.updateBottomPadding}}>
             <LaunchContext.Provider value = {this.state.launchData}>
               <LaunchList />
             </LaunchContext.Provider>
@@ -84,12 +121,12 @@ export default class App extends React.Component<{}, IState> {
       <SafeAreaProvider>
         <StatusBar barStyle = 'dark-content' />
         <View style={styles.container}>
-          <Animated.View style={{marginTop: this.state.headerHeight, flex: 1,}}>
+          <Animated.View style={{marginTop: this.state.animatedTopMargin, flex: 1, width: '100%', marginBottom: this.state.animatedBottomPadding, }}>
             <Home />
           </Animated.View>
           <Animated.View 
             onLayout={event => { this.findHeaderDimensions(event.nativeEvent.layout) }}
-            style={[styles.header, {top: this.state.scrollY}]}>
+            style={[styles.header, {top: this.state.scrollY, width: '100%', }]}>
             <NavBar />
           </Animated.View>
           {/* <BottomMenu /> */}
