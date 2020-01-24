@@ -30,7 +30,7 @@ export class LaunchList extends React.Component<any, any> {
                                       // User scrolls up: 
                                       let negativeMarginValue: number;
                                       if (insets.top == 0) {
-                                        negativeMarginValue = -9999; // Signalling non existing insets
+                                        negativeMarginValue = -9999; // Signalling non existing insets 
                                       } else {
                                         negativeMarginValue = -insets.top;
                                       }
