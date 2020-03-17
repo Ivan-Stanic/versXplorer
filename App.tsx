@@ -61,7 +61,7 @@ export default class App extends React.Component<{}, IState> {
         Animated.timing(this.state.scrollY,
           {toValue: newValue,
             isInteraction: false,
-          duration: 150,}),
+          duration: 80,}),
         Animated.timing(this.state.animatedTopMargin,
           {toValue: newValue + parseInt(JSON.stringify(this.state.headerHeight)),
             isInteraction: false,
