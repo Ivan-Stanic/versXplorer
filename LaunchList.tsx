@@ -5,21 +5,31 @@ import {LaunchContext, HeaderScrollContext, } from './App';
 import { paddingCorrection } from './Constants';
 import {IRocket, ILaunches, IAllLaunches} from './Interfaces';
 
-function LaunchItem({launchItem}) {
-  const genericRocketImage = 'https://versxplorer.com/Images/versXplorerLogo.351ca8c3.png'
+function ImageSelection ({launchItem}) {
   const imageSizes = launchItem.rocket.imageSizes;
   const minRocketImageSize = imageSizes[0] ? String(imageSizes[0]) : null;
   const maxRocketImageSize = imageSizes[0] ? String(imageSizes[imageSizes.length - 1]) : null;
   const imageURL = (launchItem.rocket.imageURL && launchItem.rocket.imageURL!== 'https://s3.amazonaws.com/launchlibrary/RocketImages/placeholder_1920.png') ?
                                     (maxRocketImageSize ? 
-                                      launchItem.rocket.imageURL.replace(maxRocketImageSize + '.', minRocketImageSize +'.') : 
-                                      launchItem.rocket.imageURL) :
-                                    genericRocketImage;
-  /* imageURL = require(imageURL); */
+                                      launchItem.rocket.imageURL.replace(maxRocketImageSize + '.', minRocketImageSize +'.')
+                                      : 
+                                      launchItem.rocket.imageURL)
+                                    : 
+                                    null;
+  if (launchItem.rocket.imageURL && launchItem.rocket.imageURL!== 'https://s3.amazonaws.com/launchlibrary/RocketImages/placeholder_1920.png') {
+    return (<Image style={styles.imageStyle} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='cover'/>)
+  } else {
+    return (<Image style={styles.imageStyle} source={require('./assets/versXplorerLogo_square_indigo.png')} resizeMethod = 'resize' resizeMode='cover'/>)
+  }
+}
+
+function LaunchItem({launchItem}) {
   return(
-    <View style={{flexDirection: 'row'}}>
-      <Image style={{height: 80, width: 80}} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
-      <Text style={styles.text}>{launchItem.name}</Text>
+    <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5}}>
+      <ImageSelection launchItem = {launchItem}/>
+      <View style={{paddingLeft: 5}}>
+        <Text style={styles.text}>{launchItem.name}</Text>
+      </View>
     </View>
   )
 }
@@ -27,14 +37,9 @@ function LaunchItem({launchItem}) {
 export class LaunchList extends React.Component<any, any> {
     constructor(props: {}){
         super(props);
-        /* this.imageSelector = this.imageSelector.bind(this); */
         this.state = {scrollPosition: 0,
                       };
       }
-    
-    /* _renderItem = ({item}) => (
-      <LaunchItem value={item} />
-    ); */
 
     public render() {
         return(
@@ -85,20 +90,7 @@ export class LaunchList extends React.Component<any, any> {
           </HeaderScrollContext.Consumer>
         )
     }
-
-    /* imageSelector(rocket: IRocket) :string {
-      const genericRocketImage = './assets/versXplorerLogo.png'
-      const imageSizes = rocket.imageSizes;
-      const minRocketImageSize = imageSizes[0] ? String(imageSizes[0]) : null;
-      const maxRocketImageSize = imageSizes[0] ? String(imageSizes[imageSizes.length - 1]) : null;
-      const imageURL = (rocket.imageURL && rocket.imageURL!== 'https://s3.amazonaws.com/launchlibrary/RocketImages/placeholder_1920.png') ?
-                                        (maxRocketImageSize ? 
-                                          rocket.imageURL.replace(maxRocketImageSize + '.', minRocketImageSize +'.') : 
-                                          rocket.imageURL) :
-                                        genericRocketImage;
-      return require(imageURL);
-    } */
-}
+  }
 
 const styles = StyleSheet.create({
     container: {
@@ -108,5 +100,10 @@ const styles = StyleSheet.create({
     text: {
       color: 'darkblue',
       fontSize: 20,
+    },
+    imageStyle: {
+      height: 80,
+      width: 80,
+      borderRadius: 10
     }
 });
