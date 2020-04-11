@@ -9,30 +9,37 @@ function ImageSelection ({launchItem}) {
   const imageSizes = launchItem.rocket.imageSizes;
   const minRocketImageSize = imageSizes[0] ? String(imageSizes[0]) : null;
   const maxRocketImageSize = imageSizes[0] ? String(imageSizes[imageSizes.length - 1]) : null;
-  const imageURL = (launchItem.rocket.imageURL && launchItem.rocket.imageURL!== 'https://s3.amazonaws.com/launchlibrary/RocketImages/placeholder_1920.png') ?
+  const imageURL = (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) ? // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
                                     (maxRocketImageSize ? 
                                       launchItem.rocket.imageURL.replace(maxRocketImageSize + '.', minRocketImageSize +'.')
                                       : 
                                       launchItem.rocket.imageURL)
                                     : 
                                     null;
-  if (launchItem.rocket.imageURL && launchItem.rocket.imageURL!== 'https://s3.amazonaws.com/launchlibrary/RocketImages/placeholder_1920.png') {
+  const localImage = './assets/versXplorerLogo_square_indigo.png';
+  // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
+  if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) {
     return (<Image style={styles.imageStyle} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='cover'/>)
   } else {
-    return (<Image style={styles.imageStyle} source={require('./assets/versXplorerLogo_square_indigo.png')} resizeMethod = 'resize' resizeMode='cover'/>)
+    return (<Image style={styles.imageStyle} source={require(`${localImage}`)} resizeMethod = 'resize' resizeMode='cover'/>)
   }
 }
 
 function LaunchItem({launchItem}) {
+  const dateArray = new Date(launchItem.windowstart).toString().split(' ');
+  const date: string = dateArray[1] + ' ' + dateArray[2] + ', ' + dateArray[3];
   return(
-    <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5}}>
+    <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
       <ImageSelection launchItem = {launchItem}/>
-      <View style={{paddingLeft: 5}}>
-        <Text style={styles.text}>{launchItem.name}</Text>
+      <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
+        <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
+        <Text style={[styles.text, styles.textbold]}>{launchItem.name}</Text>
+        <Text style={[styles.text]}>{launchItem.location.name}</Text>
       </View>
     </View>
   )
 }
+// {width: 0, flexGrow: 1} makes sure that <View component takes 100% of the remaining space, at least in this settings. Not sure how it works
 
 export class LaunchList extends React.Component<any, any> {
     constructor(props: {}){
@@ -97,12 +104,18 @@ const styles = StyleSheet.create({
         flex: 1,
       backgroundColor: 'white',
     },
-    text: {
+    textblue: {
       color: 'darkblue',
-      fontSize: 20,
+    },
+    textbold: {
+      fontWeight: 'bold',
+    },
+    text: {
+      fontSize: 15,
     },
     imageStyle: {
-      height: 80,
+      height: '100%',
+      minHeight: 80,
       width: 80,
       borderRadius: 10
     }
