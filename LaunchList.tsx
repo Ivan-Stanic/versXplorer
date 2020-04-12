@@ -1,9 +1,10 @@
 import * as React from 'react';
-import { StyleSheet, View, Image, Text, FlatList, Platform, UIManager, LayoutAnimation } from 'react-native'
+import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity } from 'react-native'
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
 import {LaunchContext, HeaderScrollContext, } from './App';
 import { paddingCorrection } from './Constants';
-import {IRocket, ILaunches, IAllLaunches} from './Interfaces';
+import {IAllLaunches} from './Interfaces';
+import { useNavigation } from '@react-navigation/native';
 
 function ImageSelection ({launchItem}) {
   const imageSizes = launchItem.rocket.imageSizes;
@@ -28,15 +29,19 @@ function ImageSelection ({launchItem}) {
 function LaunchItem({launchItem}) {
   const dateArray = new Date(launchItem.windowstart).toString().split(' ');
   const date: string = dateArray[1] + ' ' + dateArray[2] + ', ' + dateArray[3];
+  const navigation = useNavigation();
   return(
-    <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
-      <ImageSelection launchItem = {launchItem}/>
-      <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
-        <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
-        <Text style={[styles.text, styles.textbold]}>{launchItem.name}</Text>
-        <Text style={[styles.text]}>{launchItem.location.name}</Text>
+    <TouchableOpacity onPress={() => navigation.navigate('Details', {id: launchItem.id})}>
+      <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
+        <ImageSelection launchItem = {launchItem}/>
+        <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
+          <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
+          <Text style={[styles.text, styles.textbold]}>{launchItem.name}</Text>
+          <Text style={[styles.text]}>{launchItem.location.name}</Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
+    
   )
 }
 // {width: 0, flexGrow: 1} makes sure that <View component takes 100% of the remaining space, at least in this settings. Not sure how it works
@@ -51,7 +56,7 @@ export class LaunchList extends React.Component<any, any> {
     public render() {
         return(
           <HeaderScrollContext.Consumer>
-            {({setScrollValues, setPaddingValues}) => 
+            {({setPaddingValues}) => 
                 (<LaunchContext.Consumer>
                   {(LaunchData: IAllLaunches) => 
                       (<SafeAreaConsumer>{insets => 
@@ -61,25 +66,10 @@ export class LaunchList extends React.Component<any, any> {
                                               paddingLeft: insets.left + paddingCorrection }]}
                               data={LaunchData.launches}
                               renderItem={({ item }) => <LaunchItem launchItem = {item} />}
-                                          /* {({ item }) => <View style={{flexDirection: 'row'}}>
-                                                          <Image style={{height: 80, width: 80}} source={require('./assets/versXplorerLogo.png')} resizeMethod = 'resize' resizeMode='contain'/>
-                                                          <Text style={styles.text}>{item.name}</Text>
-                                                        </View>} */
                               onScroll={event => {
-                                  let scrollSensingStep: number = 10;
-                                  if (event.nativeEvent.contentOffset.y > this.state.scrollPosition && this.state.scrollPosition >= 0) {
-                                      // User scrolls up: 
-                                      let negativeMarginValue: number;
-                                      if (insets.top == 0) {
-                                        negativeMarginValue = -9999; // Signalling non existing insets 
-                                      } else {
-                                        negativeMarginValue = -insets.top;
-                                      }
-                                      setScrollValues(negativeMarginValue);
-                                  } else if (event.nativeEvent.contentOffset.y < this.state.scrollPosition && event.nativeEvent.contentOffset.y < event.nativeEvent.contentSize.height - event.nativeEvent.layoutMeasurement.height - 50) {
+                                  if (event.nativeEvent.contentOffset.y < this.state.scrollPosition && event.nativeEvent.contentOffset.y < event.nativeEvent.contentSize.height - event.nativeEvent.layoutMeasurement.height - 50) {
                                     //insets.bottom added because event.nativeEvent.layoutMeasurement.height decreases by that value when parent margin changes below.
                                     // User scrolls down: 
-                                    setScrollValues(0);
                                     setPaddingValues(0);
                                   }
                                   // insets.bottom > 0 check added as layout animation reports error when starting and ending position are the same
