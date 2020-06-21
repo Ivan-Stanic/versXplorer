@@ -1,7 +1,7 @@
-import * as React from 'react';
-import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity } from 'react-native'
+import React, { useRef, useState, useContext } from 'react';
+import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity, Animated, ScrollView } from 'react-native'
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
-import {LaunchContext, HeaderScrollContext, } from './App';
+import {LaunchContext } from './App';
 import { paddingCorrection } from './Constants';
 import {IAllLaunches} from './Interfaces';
 import { useNavigation } from '@react-navigation/native';
@@ -27,17 +27,17 @@ function ImageSelection ({launchItem}) {
 }
 
 function LaunchItem({launchItem}) {
-  const dateArray = new Date(launchItem.windowstart).toString().split(' ');
+  const dateArray = new Date(launchItem.item.windowstart).toString().split(' ');
   const date: string = dateArray[1] + ' ' + dateArray[2] + ', ' + dateArray[3];
   const navigation = useNavigation();
   return(
-    <TouchableOpacity onPress={() => navigation.navigate('Details', {id: launchItem.id})}>
+    <TouchableOpacity onPress={() => navigation.navigate('Details', {index: launchItem.index})}>
       <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
-        <ImageSelection launchItem = {launchItem}/>
+        <ImageSelection launchItem = {launchItem.item}/>
         <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
           <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
-          <Text style={[styles.text, styles.textbold]}>{launchItem.name}</Text>
-          <Text style={[styles.text]}>{launchItem.location.name}</Text>
+          <Text style={[styles.text, styles.textbold]}>{launchItem.item.name}</Text>
+          <Text style={[styles.text]}>{launchItem.item.location.name}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -46,48 +46,32 @@ function LaunchItem({launchItem}) {
 }
 // {width: 0, flexGrow: 1} makes sure that <View component takes 100% of the remaining space, at least in this settings. Not sure how it works
 
-export class LaunchList extends React.Component<any, any> {
-    constructor(props: {}){
-        super(props);
-        this.state = {scrollPosition: 0,
-                      };
-      }
+export function LaunchList () {
+  
+  const LaunchData = useContext(LaunchContext);
 
-    public render() {
-        return(
-          <HeaderScrollContext.Consumer>
-            {({setPaddingValues}) => 
-                (<LaunchContext.Consumer>
-                  {(LaunchData: IAllLaunches) => 
-                      (<SafeAreaConsumer>{insets => 
+  if ('info' in LaunchData) {
+    return(
+        <Text style={styles.text}>{LaunchData.info}</Text>
+    )
+  } else {
+    
+    return (
+      <SafeAreaConsumer>{insets => 
                           <FlatList style={[
-                                          styles.container, 
-                                          { paddingRight: insets.right + paddingCorrection,
-                                              paddingLeft: insets.left + paddingCorrection }]}
-                              data={LaunchData.launches}
-                              renderItem={({ item }) => <LaunchItem launchItem = {item} />}
-                              onScroll={event => {
-                                  if (event.nativeEvent.contentOffset.y < this.state.scrollPosition && event.nativeEvent.contentOffset.y < event.nativeEvent.contentSize.height - event.nativeEvent.layoutMeasurement.height - 50) {
-                                    //insets.bottom added because event.nativeEvent.layoutMeasurement.height decreases by that value when parent margin changes below.
-                                    // User scrolls down: 
-                                    setPaddingValues(0);
-                                  }
-                                  // insets.bottom > 0 check added as layout animation reports error when starting and ending position are the same
-                                  if (insets.bottom > 0 && event.nativeEvent.contentOffset.y >= event.nativeEvent.contentSize.height - event.nativeEvent.layoutMeasurement.height) {
-                                      // FlatList just reached bottom: animate bottom margin apperance
-                                    setPaddingValues(insets.bottom);
-                                  }
-                                  this.setState({scrollPosition: event.nativeEvent.contentOffset.y})
-                              }}
-                          />
+                                      styles.container, 
+                                      { paddingRight: insets.right + paddingCorrection,
+                                          paddingLeft: insets.left + paddingCorrection }]}
+                                data={LaunchData.launches}
+                                renderItem={({ item, index }) => <LaunchItem launchItem = {{item: item, index: index}} />}
+                                ListFooterComponent={<View style={{height: insets.bottom,}}></View>}
+                            />
                           }
-                      </SafeAreaConsumer>
-                      )}
-              </LaunchContext.Consumer>)}
-          </HeaderScrollContext.Consumer>
-        )
-    }
+          </SafeAreaConsumer>
+    )
   }
+
+}
 
 const styles = StyleSheet.create({
     container: {
