@@ -1,11 +1,11 @@
 import React, { useRef, useContext, useLayoutEffect, useEffect, useState } from 'react';
 import {LaunchContext} from './App';
-import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking } from 'react-native'
+import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform } from 'react-native'
 import {askForData} from './askingForData';
 import {IWeatherData} from './Interfaces';
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
 import { paddingCorrection } from './Constants';
-import { FontAwesome, MaterialIcons, SimpleLineIcons } from '@expo/vector-icons';
+import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { TransitionPresets } from '@react-navigation/stack';
 
 interface IWeatherInput {
@@ -54,7 +54,7 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                 padId: this.props.weatherInput.padId});
         }
     }
-    
+
     render() {
         let imageURL: string = 'https://openweathermap.org/img/wn/02d.png';
         let windDirections: Array<string> = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
@@ -62,29 +62,45 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
         if (!('info' in this.state.weatherData)) {
             imageURL = 'https://openweathermap.org/img/wn/' + this.state.weatherData.data.icon + '.png';
             if (this.state.weatherData.data.windSpeed) {
-                windString = 'Wind: ' +  this.state.weatherData.data.windSpeed + ' m/s';
+                windString = Math.floor(this.state.weatherData.data.windSpeed) + ' m/s';
                 if (this.state.weatherData.data.windDirection) {
                     windString = windString + "  " + windDirections[Math.floor(((this.state.weatherData.data.windDirection % 360) + 11.25)/22.5)];
                 }
             }
         }
+        const imageWidth: number = 25;
+        let tempTextFont: string = 'DIN Condensed';
+        if (Platform.OS === 'android') {
+            tempTextFont = 'sans-serif-condensed'
+          }
         return(
-            <View >
-                <Image style={[styles.imageStyle]} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
+            <View style={{flexDirection: 'column', padding: 10, margin: 10, borderRadius: 10, borderColor: 'lightblue', borderWidth: 3}}>
+                {!(this.state.weatherData.info) && <Text style={{width: '100%', fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>{((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1))}</Text>}
+                <View style={{flexDirection: 'row', }}>
+                    <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
                     {(this.state.weatherData.info) ?
-                        (<View>
-                            <Text style={{margin: 'auto'}}>{this.state.weatherData.info}</Text>
+                        (<View style={{width: (100 - imageWidth).toString() + '%', }}>
+                            <Text style={{margin: 'auto', borderWidth: 1,}}>{this.state.weatherData.info}</Text>
                         </View>)
                     :
-                        (<View>
-                            <Text>{((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1))}</Text>
-                            <Text>{'Temperature: ' + (Math.round(this.state.weatherData.data.temp - 273.15)) + ' C'}</Text>
-                            <Text>{'Pressure: ' + this.state.weatherData.data.pressure + ' hPa(mbar)'}</Text>
-                            <Text>{'Humidity: ' + this.state.weatherData.data.humidity + '%'}</Text>
-                            <Text>{windString}</Text>
-                            {!(this.state.weatherData.info) && <Text style={{position: 'relative', bottom: 0}} >Weather data by openweathermap.org</Text>}
+                        (<View style={{width: (100 - imageWidth).toString() + '%', flexDirection: 'row', alignItems: 'center'}}>
+                            <View style={{width: (100 - (imageWidth / (1 - (imageWidth / 100)))).toString() + '%', alignItems: 'center'}}>
+                                <View style={{flexDirection: 'row', }}>
+                                    <MaterialCommunityIcons name="weather-windy" size={24} color="black" />
+                                    <Text style={{fontSize: 20, paddingLeft: 10 }}>{windString}</Text>
+                                </View>
+                                <Text>{'Pressure: ' + this.state.weatherData.data.pressure + ' mbar'}</Text>
+                                <Text>{'Humidity: ' + this.state.weatherData.data.humidity + '%'}</Text>
+                            </View>
+                            <View style={{width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%', alignSelf: 'center', alignItems: 'center', alignContent: 'center'}}>
+                                <Text style={{fontSize: 40, fontWeight: 'bold', padding: 10, textAlign: 'center', textAlignVertical: 'center', fontFamily: tempTextFont,}}>{(Math.round(this.state.weatherData.data.temp - 273.15)) + '\u00b0'}</Text>
+                            </View>
                         </View>)
                     }
+                </View>
+                {!(this.state.weatherData.info) && <TouchableOpacity onPress={() => {Linking.openURL('https://openweathermap.org');}}>
+                                                        <Text style={{width: '100%', fontSize: 12, textAlign: 'center', marginTop: 10, color: 'blue', textDecorationLine: 'underline'}} >openweathermap.org</Text>
+                                                    </TouchableOpacity>}
             </View>
         )
     }
@@ -108,6 +124,7 @@ function DetailsContainer ({launchItem}) {
                                                     }]}>
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Mission'}</Text>
             <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{missionName}</Text>
+            <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Type'}</Text>
             <Text style={[styles.missionDetailsText, {color: 'orange', fontWeight: 'bold',}]}>{missionType}</Text>
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Agency'}</Text>
             <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{launchItem.lsp.name}</Text>
@@ -117,11 +134,11 @@ function DetailsContainer ({launchItem}) {
                             alignItems: 'center',
                             justifyContent: 'center',
                         }]}>
-                <TouchableOpacity style={{borderWidth: 1, borderRadius: 3, borderColor: 'blue', padding: 3}} onPress={() => {Linking.openURL(launchItem.lsp.wikiURL);}}>
-                    <FontAwesome name="wikipedia-w" size={20} color="blue" />
+                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.lsp.wikiURL);}}>
+                    <FontAwesome name="wikipedia-w" size={20} color="black" />
                 </TouchableOpacity>
                 {(launchItem.vidURLs[0]) && <View style={{width: 20}}/>}
-                {(launchItem.vidURLs[0]) && <TouchableOpacity onPress={() => {Linking.openURL(launchItem.vidURLs[0]);}}><MaterialIcons name="live-tv" size={32} color="blue" /></TouchableOpacity>}
+                {(launchItem.vidURLs[0]) && <TouchableOpacity onPress={() => {Linking.openURL(launchItem.vidURLs[0]);}}><MaterialIcons name="live-tv" size={32} color="black" /></TouchableOpacity>}
             </View>
             <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 10,}}>
                 <SimpleLineIcons style={{paddingRight: 10,}} name="location-pin" size={32} color="black" />
@@ -130,8 +147,8 @@ function DetailsContainer ({launchItem}) {
             <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 10, width: '100%'}}>
                 <SimpleLineIcons name="rocket" size={24} color="black" />
                 <Text style={[styles.missionDetailsText, {fontWeight: 'bold', maxWidth: '60%', paddingLeft: 10, paddingRight: 10,}]}>{launchItem.rocket.name}</Text>
-                <TouchableOpacity style={{borderWidth: 1, borderRadius: 3, borderColor: 'blue', padding: 3}} onPress={() => {Linking.openURL(launchItem.rocket.wikiURL);}}>
-                    <FontAwesome name="wikipedia-w" size={20} color="blue" />
+                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.rocket.wikiURL);}}>
+                    <FontAwesome name="wikipedia-w" size={20} color="black" />
                 </TouchableOpacity>
             </View>
         </View>
@@ -147,7 +164,7 @@ function ShowImage ({launchItem}) {
     const [imageAspectRatio, setIAR] = useState(1);
 
     useEffect(() => {
-        Image.getSize(imageURL, (width, height) => {setIAR(imageAspectRatio => imageAspectRatio = width / height)}, () => {setIAR(imageAspectRatio => imageAspectRatio = 1)});
+        Image.getSize(imageURL, (width, height) => {setIAR(width / height)}, () => {setIAR(1)});
     })
     
     if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) {
