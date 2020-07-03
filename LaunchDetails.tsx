@@ -6,7 +6,34 @@ import {IWeatherData} from './Interfaces';
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
 import { paddingCorrection } from './Constants';
 import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { TransitionPresets } from '@react-navigation/stack';
+import MapView from 'react-native-maps';
+import { Marker } from 'react-native-maps';
+
+function ShowMap ({launchItem}) {
+
+    return(
+        <View style={{height: 300, margin: 10, borderRadius: 10, overflow: 'hidden'}}>
+            <MapView
+                style={{height: '100%'}}
+                region={{
+                    latitude: launchItem.location.pads[0].latitude,
+                    longitude: launchItem.location.pads[0].longitude,
+                    latitudeDelta: 1.5,
+                    longitudeDelta: 1.5,
+                }}>
+                <Marker
+                    coordinate={{
+                        latitude: launchItem.location.pads[0].latitude,
+                        longitude: launchItem.location.pads[0].longitude,}}>
+                    <View style={{padding: 10,}}>
+                        <Image style={{width: 35, height: 35}} source={require('./assets/versXplorerLogo_square_indigo.png')} resizeMethod = 'resize' resizeMode='cover'/>
+                    </View>
+                </Marker>
+
+            </MapView>
+        </View>
+    )
+}
 
 interface IWeatherInput {
     padId: number;
@@ -410,6 +437,7 @@ export function LaunchDetails ({navigation, route}) {
                                 <Countdown windowStart = {LaunchData.launches[detailsIndex].windowstart}/>
                                 <ImageDetailsContainer launchItem = {LaunchData.launches[detailsIndex]}/>
                                 <WeatherContainer weatherInput = {weatherInput}/>
+                                <ShowMap launchItem = {LaunchData.launches[detailsIndex]}/>
                                 <View style={{height: insets.bottom,}}></View>
                             </ScrollView>
                         </Animated.View>}
