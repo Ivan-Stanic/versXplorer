@@ -97,8 +97,10 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
         }
         const imageWidth: number = 25;
         let tempTextFont: string = 'DIN Condensed';
+        let tempTextSize: number = 40;
         if (Platform.OS === 'android') {
-            tempTextFont = 'sans-serif-condensed'
+            tempTextFont = 'sans-serif-condensed';
+            tempTextSize = 35;
           }
         return(
             <View style={{flexDirection: 'column', padding: 10, margin: 10, borderRadius: 10, borderColor: 'lightblue', borderWidth: 3}}>
@@ -107,7 +109,7 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                     <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
                     {(this.state.weatherData.info) ?
                         (<View style={{width: (100 - imageWidth).toString() + '%', }}>
-                            <Text style={{margin: 'auto', borderWidth: 1,}}>{this.state.weatherData.info}</Text>
+                            <Text style={{margin: 'auto',}}>{this.state.weatherData.info}</Text>
                         </View>)
                     :
                         (<View style={{width: (100 - imageWidth).toString() + '%', flexDirection: 'row', alignItems: 'center'}}>
@@ -120,7 +122,7 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                                 <Text>{'Humidity: ' + this.state.weatherData.data.humidity + '%'}</Text>
                             </View>
                             <View style={{width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%', alignSelf: 'center', alignItems: 'center', alignContent: 'center'}}>
-                                <Text style={{fontSize: 40, fontWeight: 'bold', padding: 10, textAlign: 'center', textAlignVertical: 'center', fontFamily: tempTextFont,}}>{(Math.round(this.state.weatherData.data.temp - 273.15)) + '\u00b0'}</Text>
+                                <Text style={{fontSize: tempTextSize, fontWeight: 'bold', padding: 10, textAlign: 'center', textAlignVertical: 'center', fontFamily: tempTextFont,}}>{(Math.round(this.state.weatherData.data.temp - 273.15)) + '\u00b0'}</Text>
                             </View>
                         </View>)
                     }
@@ -345,32 +347,46 @@ export function LaunchDetails ({navigation, route}) {
         ]).start()
       });
 
-    const pan = useRef(new Animated.ValueXY()).current;
-
+    //const pan = useRef(new Animated.ValueXY()).current;
+    const pan = useRef(new Animated.Value(0)).current;
+  
     const panResponder = useRef(
         PanResponder.create({
-            onMoveShouldSetPanResponder: () => true,
+            onStartShouldSetPanResponder: (evt, gestureState) => true,
+            onStartShouldSetPanResponderCapture: (evt, gestureState) =>
+                true,
+            onMoveShouldSetPanResponder: (evt, gestureState) => {
+                if (pan._value > 50) {
+                    navigation.push('Details', {index: previousIndex, direction: -1});
+                } else if (pan._value < -50) {
+                    navigation.push('Details', {index: nextIndex, direction: 1});
+                }
+                return true;
+            },
+            onMoveShouldSetPanResponderCapture: (evt, gestureState) =>
+                true,
             onPanResponderGrant: () => {
-                /* pan.setOffset({
-                    x: pan.x._value,
-                    y: pan.y._value
-                  }); */
+                return true;
             },
             onPanResponderMove: Animated.event(
                 [
                     null,
-                    { dx: pan.x, dy: pan.y }
+                    { dx: pan }
                 ]
             ),
             onPanResponderTerminationRequest: (evt, gestureState) => true,
             onPanResponderRelease: () => {
-                if (pan.x._value > 50) {
+                if (pan._value > 50) {
                     navigation.push('Details', {index: previousIndex, direction: -1});
-                } else if (pan.x._value < -50) {
+                } else if (pan._value < -50) {
                     navigation.push('Details', {index: nextIndex, direction: 1});
                 }
-                /* pan.flattenOffset(); */
-            }
+            },
+            onShouldBlockNativeResponder: (evt, gestureState) => {
+                // Returns whether this component should block native components from becoming the JS
+                // responder. Returns true by default. Is currently only supported on android.
+                return true;
+            },
         })
     ).current;
 
@@ -418,19 +434,19 @@ export function LaunchDetails ({navigation, route}) {
             return (
                 <View style={styles.container}>
                     <SafeAreaConsumer>{insets => 
-                        <Animated.View
-                            style={[{flex: 1,
+                            <Animated.ScrollView style={[
+                                { paddingRight: insets.right + paddingCorrection,
+                                    paddingLeft: insets.left + paddingCorrection,
+                                    flex: 1, flexDirection: 'column',
                                     width: '100%', 
                                     left: swipe, 
                                     borderLeftColor: 'black', 
                                     borderRightColor: 'black', 
                                     borderLeftWidth: animBorder, 
-                                    borderRightWidth: animBorder}]}>
-                            <ScrollView style={[
-                                { paddingRight: insets.right + paddingCorrection,
-                                    paddingLeft: insets.left + paddingCorrection,
-                                    flex: 1, flexDirection: 'column'}]} 
-                                    {...panResponder.panHandlers}>
+                                    borderRightWidth: animBorder
+                                    }]} 
+                                {...panResponder.panHandlers}
+                                disableScrollViewPanResponder={true}>
                                 <Text style={styles.title}>{LaunchData.launches[detailsIndex].name}</Text>
                                 <Text style={styles.date}>{(new Date(LaunchData.launches[detailsIndex].windowstart)).toString()}</Text>
                                 <Text style={styles.detailContainerStyle}>{launchDescription}</Text>
@@ -439,8 +455,7 @@ export function LaunchDetails ({navigation, route}) {
                                 <WeatherContainer weatherInput = {weatherInput}/>
                                 <ShowMap launchItem = {LaunchData.launches[detailsIndex]}/>
                                 <View style={{height: insets.bottom,}}></View>
-                            </ScrollView>
-                        </Animated.View>}
+                            </Animated.ScrollView>}
                     </SafeAreaConsumer>
                 </View>
             );
