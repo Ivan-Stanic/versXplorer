@@ -30,19 +30,26 @@ function LaunchItem({launchItem}) {
   const dateArray = new Date(launchItem.item.windowstart).toString().split(' ');
   const date: string = dateArray[1] + ' ' + dateArray[2] + ', ' + dateArray[3];
   const navigation = useNavigation();
-  return(
-    <TouchableOpacity onPress={() => navigation.navigate('Details', {index: launchItem.index})}>
-      <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
-        <ImageSelection launchItem = {launchItem.item}/>
-        <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
-          <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
-          <Text style={[styles.text, styles.textbold]}>{launchItem.item.name}</Text>
-          <Text style={[styles.text]}>{launchItem.item.location.name}</Text>
+  // Calculation of the launch date below is needed to exclude past launches if any
+  // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)  
+  const launchDate: Date = new Date (launchItem.item.windowstart);
+  const today: Date = new Date();
+  if (today < launchDate) {
+    return(
+      <TouchableOpacity onPress={() => navigation.navigate('Details', {index: launchItem.index})}>
+        <View style={{flexDirection: 'row', paddingBottom: 5, paddingTop: 5, }}>
+          <ImageSelection launchItem = {launchItem.item}/>
+          <View style={{paddingLeft: 10, paddingRight: 10, width: 0, flexGrow: 1,}}>
+            <Text style={[styles.text, styles.textbold, styles.textblue]}>{date}</Text>
+            <Text style={[styles.text, styles.textbold]}>{launchItem.item.name}</Text>
+            <Text style={[styles.text]}>{launchItem.item.location.name}</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-    
-  )
+      </TouchableOpacity>
+    )
+  } else {
+    return null;
+  }
 }
 // {width: 0, flexGrow: 1} makes sure that <View component takes 100% of the remaining space, at least in this settings. Not sure how it works
 

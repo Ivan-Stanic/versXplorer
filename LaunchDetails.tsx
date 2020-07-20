@@ -320,8 +320,16 @@ export function LaunchDetails ({navigation, route}) {
     const { direction }  = route.params;
     const detailsIndex: number = parseInt(JSON.stringify(index));
 
+    // Calculation of the previous and next index for pan gesture to work. Excludes past launches if any
+    // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)
+    const nextLaunchDate: Date = new Date (LaunchData.launches[(detailsIndex + 1) % (LaunchData.launches.length)].windowstart);
+    const previousLaunchDate: Date = new Date (LaunchData.launches[((detailsIndex - 1) < 0) ? (LaunchData.launches.length - 1) : (detailsIndex - 1)].windowstart);
+    const today: Date = new Date();
     let nextIndex: number = (detailsIndex + 1) % (LaunchData.launches.length);
-    let previousIndex: number = ((detailsIndex - 1) < 0) ? (LaunchData.launches.length - 1) : (detailsIndex - 1);
+    while (today > nextLaunchDate) {
+        nextIndex = (nextIndex + 1) % (LaunchData.launches.length);
+    }
+    let previousIndex: number = (((detailsIndex - 1) < 0) || (today > previousLaunchDate)) ? (LaunchData.launches.length - 1) : (detailsIndex - 1);
     
     let swipeDirection: number = 1;
     if (direction) {

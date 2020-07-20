@@ -23,7 +23,7 @@ export default class App extends React.Component<{}, IState> {
 
     //this.updateBottomPadding = this.updateBottomPadding.bind(this);
 
-    this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/15',
+    this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30',
                   launchData: initialLaunchData,
                   };
   }
