@@ -29,7 +29,22 @@ export default class App extends React.Component<{}, IState> {
   }
 
   public async componentDidMount() {
-    this.setState({launchData: await askForData(this.state.launchURL)});
+    // introducing the temp variable and calculation if the launch date below is needed to exclude past launches if any
+    // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)
+    // Assumption is that next launches are sorted chronologicaly from the earliest to the latest as they are at this moment.
+    let launchDataTemp: IAllLaunches = await askForData(this.state.launchURL);
+    if (!('info' in launchDataTemp)) {
+      let x: number = 0;
+      let todayDate: Date = new Date();
+      let launchDate: Date = new Date(launchDataTemp.launches[x].windowstart);
+      while (launchDate < todayDate) {
+        launchDataTemp.launches.shift();
+        x++;
+        launchDate = new Date(launchDataTemp.launches[x].windowstart);
+      }
+    }
+    this.setState({launchData: launchDataTemp});
+    // this.setState({launchData: await askForData(this.state.launchURL)});
   }
   
   public render() {
