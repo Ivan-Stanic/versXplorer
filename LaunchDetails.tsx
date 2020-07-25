@@ -1,5 +1,5 @@
 import React, { useRef, useContext, useLayoutEffect, useEffect, useState } from 'react';
-import {LaunchContext} from './App';
+import {LaunchContext, ILaunchContext} from './App';
 import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform } from 'react-native'
 import {askForData} from './askingForData';
 import {IWeatherData} from './Interfaces';
@@ -314,7 +314,7 @@ function Countdown (props: ICtDwnProps) {
 
 export function LaunchDetails ({navigation, route}) {
 
-    const LaunchData = useContext(LaunchContext);
+    const LaunchCtx: ILaunchContext = useContext(LaunchContext);
 
     const { index } = route.params;
     const { direction }  = route.params;
@@ -331,8 +331,8 @@ export function LaunchDetails ({navigation, route}) {
     }
     let previousIndex: number = (((detailsIndex - 1) < 0) || (today > previousLaunchDate)) ? (LaunchData.launches.length - 1) : (detailsIndex - 1); */
 
-    let nextIndex: number = (detailsIndex + 1) % (LaunchData.launches.length);
-    let previousIndex: number = ((detailsIndex - 1) < 0) ? (LaunchData.launches.length - 1) : (detailsIndex - 1);
+    let nextIndex: number = (detailsIndex + 1) % (LaunchCtx.launchData.launches.length);
+    let previousIndex: number = ((detailsIndex - 1) < 0) ? (LaunchCtx.launchData.launches.length - 1) : (detailsIndex - 1);
     
     let swipeDirection: number = 1;
     if (direction) {
@@ -401,17 +401,17 @@ export function LaunchDetails ({navigation, route}) {
         })
     ).current;
 
-    if ('info' in LaunchData) {
+    if ('info' in LaunchCtx.launchData) {
           return(
-              <Text>{LaunchData.info}</Text>
+              <Text>{LaunchCtx.launchData.info}</Text>
           )
-        } else if (!(LaunchData)) {
+        } else if (!(LaunchCtx.launchData)) {
           return(
               <Text>No Data</Text>
           )
         } else {
             const localImage = './assets/versXplorerLogo_square_indigo.png';
-            navigation.setOptions({ title: LaunchData.launches[detailsIndex].name,
+            navigation.setOptions({ title: LaunchCtx.launchData.launches[detailsIndex].name,
                                     headerLeft: () => (
                                         <TouchableOpacity onPress={() => navigation.navigate('Home')}>
                                             <View style={{paddingLeft: 20, height: '100%', paddingTop: '10%'}}>
@@ -428,18 +428,18 @@ export function LaunchDetails ({navigation, route}) {
                                     ),
                                     });
             let launchDescription: string = '';
-            for (const val of LaunchData.launches[detailsIndex].missions) {
+            for (const val of LaunchCtx.launchData.launches[detailsIndex].missions) {
                 launchDescription = launchDescription + val.description + ' ';
             }
-            const d = new Date(LaunchData.launches[detailsIndex].windowstart);
+            const d = new Date(LaunchCtx.launchData.launches[detailsIndex].windowstart);
             const weatherDate: string = (d.toISOString()).slice(0, 10);
             let weatherHourN: number = parseInt((d.toISOString()).slice(11, 13)) - (parseInt((d.toISOString()).slice(11, 13)) % 3);
             let weatherHour: string = weatherHourN.toString();
             if (weatherHourN < 10) {weatherHour = '0' + weatherHour}
             const weatherTimeInterval: string = weatherDate + ' ' + weatherHour + ':00:00';
             const weatherInput: IWeatherInput = {
-                padId: LaunchData.launches[detailsIndex].location.pads[0].id,
-                windowstart: LaunchData.launches[detailsIndex].windowstart,
+                padId: LaunchCtx.launchData.launches[detailsIndex].location.pads[0].id,
+                windowstart: LaunchCtx.launchData.launches[detailsIndex].windowstart,
                 weatherTimeInterval: weatherTimeInterval
             }
             return (
@@ -458,13 +458,13 @@ export function LaunchDetails ({navigation, route}) {
                                     }]} 
                                 {...panResponder.panHandlers}
                                 disableScrollViewPanResponder={true}>
-                                <Text style={styles.title}>{LaunchData.launches[detailsIndex].name}</Text>
-                                <Text style={styles.date}>{(new Date(LaunchData.launches[detailsIndex].windowstart)).toString()}</Text>
+                                <Text style={styles.title}>{LaunchCtx.launchData.launches[detailsIndex].name}</Text>
+                                <Text style={styles.date}>{(new Date(LaunchCtx.launchData.launches[detailsIndex].windowstart)).toString()}</Text>
                                 <Text style={styles.detailContainerStyle}>{launchDescription}</Text>
-                                <Countdown windowStart = {LaunchData.launches[detailsIndex].windowstart}/>
-                                <ImageDetailsContainer launchItem = {LaunchData.launches[detailsIndex]}/>
+                                <Countdown windowStart = {LaunchCtx.launchData.launches[detailsIndex].windowstart}/>
+                                <ImageDetailsContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <WeatherContainer weatherInput = {weatherInput}/>
-                                <ShowMap launchItem = {LaunchData.launches[detailsIndex]}/>
+                                <ShowMap launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <View style={{height: insets.bottom,}}></View>
                             </Animated.ScrollView>}
                     </SafeAreaConsumer>

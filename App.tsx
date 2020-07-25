@@ -9,29 +9,42 @@ import {IAllLaunches} from './Interfaces';
 import {LaunchList} from './LaunchList';
 import {LaunchDetails} from './LaunchDetails';
 
+export interface ILaunchContext {
+  refreshLaunchList () : void;
+  launchData : IAllLaunches;
+  refreshingData: boolean;
+};
+
 let initialLaunchData: IAllLaunches = {info: 'Connecting...'};
-export let LaunchContext = React.createContext(initialLaunchData);
+export let LaunchContext = React.createContext<ILaunchContext>({refreshLaunchList: () => {}, launchData: initialLaunchData, refreshingData: false});
 
 interface IState {
   launchURL: string;
   launchData: IAllLaunches;
+  refreshingData: boolean;
 }
 
 export default class App extends React.Component<{}, IState> {
   constructor(props: {}){
     super(props);
 
-    //this.updateBottomPadding = this.updateBottomPadding.bind(this);
+    this.updateLaunchList = this.updateLaunchList.bind(this);
 
-    this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30',
-                  launchData: initialLaunchData,
+    this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30', // this is the API address to load 30 next launches
+                  launchData: initialLaunchData, // This is where the launch data will be stored, or error message
+                  refreshingData: false, // This indicates that data is bein refreshed. Used in Flat List in LauchList Component.
                   };
   }
 
-  public async componentDidMount() {
+  public componentDidMount() {
+    this.updateLaunchList()
+  }
+
+  async updateLaunchList() {
     // introducing the temp variable and calculation if the launch date below is needed to exclude past launches if any
     // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)
     // Assumption is that next launches are sorted chronologicaly from the earliest to the latest as they are at this moment.
+    this.setState({refreshingData: true});
     let launchDataTemp: IAllLaunches = await askForData(this.state.launchURL);
     if (!('info' in launchDataTemp)) {
       let x: number = 0;
@@ -43,7 +56,7 @@ export default class App extends React.Component<{}, IState> {
         launchDate = new Date(launchDataTemp.launches[x].windowstart);
       }
     }
-    this.setState({launchData: launchDataTemp});
+    this.setState({launchData: launchDataTemp, refreshingData: false});
     // this.setState({launchData: await askForData(this.state.launchURL)});
   }
   
@@ -55,7 +68,7 @@ export default class App extends React.Component<{}, IState> {
       <NavigationContainer>
         <SafeAreaProvider>
           <StatusBar barStyle = 'dark-content' />
-          <LaunchContext.Provider value = {this.state.launchData}>
+          <LaunchContext.Provider value = {{refreshLaunchList: this.updateLaunchList, launchData: this.state.launchData, refreshingData: this.state.refreshingData}}>
             <Stack.Navigator initialRouteName="Home" screenOptions={() => ({gestureEnabled: true,})}>
               <Stack.Screen
                   name="Home"

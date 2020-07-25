@@ -1,7 +1,7 @@
 import React, { useRef, useState, useContext } from 'react';
-import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity, Animated, ScrollView } from 'react-native'
+import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity, Animated, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
-import {LaunchContext } from './App';
+import {LaunchContext, ILaunchContext } from './App';
 import { paddingCorrection } from './Constants';
 import {IAllLaunches} from './Interfaces';
 import { useNavigation } from '@react-navigation/native';
@@ -55,12 +55,18 @@ function LaunchItem({launchItem}) {
 
 export function LaunchList () {
   
-  const LaunchData = useContext(LaunchContext);
+  const LaunchCtx: ILaunchContext = useContext(LaunchContext);
 
-  if ('info' in LaunchData) {
-    return(
-        <Text style={styles.text}>{LaunchData.info}</Text>
-    )
+  if ('info' in LaunchCtx.launchData) {
+    if (LaunchCtx.launchData.info == 'Connecting...') {
+      return (
+        <ActivityIndicator size="large" />
+      )
+    } else {
+      return(
+          <Text style={styles.text}>{LaunchCtx.launchData.info}</Text>
+      )
+    }
   } else {
     
     return (
@@ -69,9 +75,11 @@ export function LaunchList () {
                                       styles.container, 
                                       { paddingRight: insets.right + paddingCorrection,
                                           paddingLeft: insets.left + paddingCorrection }]}
-                                data={LaunchData.launches}
+                                data={LaunchCtx.launchData.launches}
                                 renderItem={({ item, index }) => <LaunchItem launchItem = {{item: item, index: index}} />}
                                 ListFooterComponent={<View style={{height: insets.bottom,}}></View>}
+                                refreshing={LaunchCtx.refreshingData}
+                                onRefresh={LaunchCtx.refreshLaunchList}
                             />
                           }
           </SafeAreaConsumer>
