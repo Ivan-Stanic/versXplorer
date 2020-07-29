@@ -2,12 +2,15 @@ import 'react-native-gesture-handler'; // Without this line on the very top of t
 import React, { Component } from 'react';
 import { NavigationContainer} from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, StatusBar, Animated } from 'react-native';
+import { StyleSheet, StatusBar, Animated, Alert } from 'react-native';
 import { SafeAreaProvider} from 'react-native-safe-area-context';
-import {askForData} from './askingForData';
+import {askForData, storeValue, checkRegionUnits} from './commonFunctions';
 import {IAllLaunches} from './Interfaces';
 import {LaunchList} from './LaunchList';
 import {LaunchDetails} from './LaunchDetails';
+import AsyncStorage from '@react-native-community/async-storage';
+import { defaultUnits } from './Constants';
+
 
 export interface ILaunchContext {
   refreshLaunchList () : void;
@@ -18,10 +21,16 @@ export interface ILaunchContext {
 let initialLaunchData: IAllLaunches = {info: 'Connecting...'};
 export let LaunchContext = React.createContext<ILaunchContext>({refreshLaunchList: () => {}, launchData: initialLaunchData, refreshingData: false});
 
+interface IStoredData {
+  showSwipeModalOnDetailsPage?: string;
+  units?: string;
+}
+
 interface IState {
   launchURL: string;
   launchData: IAllLaunches;
   refreshingData: boolean;
+  storedData: IStoredData;
 }
 
 export default class App extends React.Component<{}, IState> {
@@ -29,15 +38,20 @@ export default class App extends React.Component<{}, IState> {
     super(props);
 
     this.updateLaunchList = this.updateLaunchList.bind(this);
-
+    this.initializeStorage = this.initializeStorage.bind(this);
+    
     this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30', // this is the API address to load 30 next launches
                   launchData: initialLaunchData, // This is where the launch data will be stored, or error message
                   refreshingData: false, // This indicates that data is bein refreshed. Used in Flat List in LauchList Component.
+                  storedData: { showSwipeModalOnDetailsPage: 'true',
+                                units: defaultUnits}
                   };
   }
 
   public componentDidMount() {
-    this.updateLaunchList()
+    this.updateLaunchList();
+    this.setState({storedData: {units: checkRegionUnits()}});
+    this.initializeStorage();
   }
 
   async updateLaunchList() {
@@ -59,6 +73,21 @@ export default class App extends React.Component<{}, IState> {
     this.setState({launchData: launchDataTemp, refreshingData: false});
     // this.setState({launchData: await askForData(this.state.launchURL)});
   }
+
+  async initializeStorage() {
+    for (let key in this.state.storedData) {
+      try {
+          const existingValue: string = await AsyncStorage.getItem(key);
+          if (existingValue == null) {
+            storeValue(key, this.state.storedData[key]);
+          } else {
+            this.setState({storedData: {[`${key}`]: existingValue}})
+          }
+        } catch(e) {
+          return 'error reading value';
+        }
+      }
+    }
   
   public render() {
 

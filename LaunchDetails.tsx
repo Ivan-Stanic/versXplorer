@@ -1,10 +1,10 @@
 import React, { useRef, useContext, useLayoutEffect, useEffect, useState } from 'react';
 import {LaunchContext, ILaunchContext} from './App';
-import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform } from 'react-native'
-import {askForData} from './askingForData';
+import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform, Modal, Picker } from 'react-native'
+import {askForData, getStoredValue, storeValue, removeItem, checkRegionUnits} from './commonFunctions';
 import {IWeatherData} from './Interfaces';
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
-import { paddingCorrection } from './Constants';
+import { paddingCorrection, defaultUnits } from './Constants';
 import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
 import { Marker } from 'react-native-maps';
@@ -51,13 +51,17 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
     constructor(props: IWeatherProps){
         super(props);
         this.state = {weatherData: initialWeatherData,
-                      padId: 9999
+                      padId: 9999,
+                      showUnitsSettingsModal: false,
+                      userUnits: defaultUnits,
         };
         this.fetchData = this.fetchData.bind(this);
+        this.readStoredUserUnits = this.readStoredUserUnits.bind(this);
     }
     
     public componentDidMount() {
         this.fetchData();
+        this.readStoredUserUnits();
     }
 
     public componentDidUpdate() {
@@ -82,14 +86,45 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
         }
     }
 
+    async readStoredUserUnits() {
+        const uUnits = await getStoredValue('units');
+        if (uUnits) {
+            this.setState({userUnits: uUnits})
+        } else {
+            this.setState({userUnits: checkRegionUnits()});
+        }
+        return uUnits;
+    }
+
     render() {
+        // Calculating temperature values demending on measurement system, providing weather data exists
+        let temperature: number = 0;
+        let windSpeed: number = 0;
+        let windString: string = windSpeed.toString();
+        let pressure: number = 1000;
+        let pressureString: string = pressure.toString();
+        if (!(this.state.weatherData.info)) {
+            temperature = this.state.weatherData.data.temp;
+            windSpeed = this.state.weatherData.data.windSpeed;
+            pressure = this.state.weatherData.data.pressure;
+            if (this.state.userUnits == 'metric') {
+                temperature = temperature - 273.15; //Converting to Celsius degrees for metic system
+                windSpeed = windSpeed * 3.6; // Converting to km/h from m/s
+                windString = Math.round(windSpeed) + ' km/h';
+                pressureString = Math.round(pressure) + ' mbar';
+            } else if (this.state.userUnits == 'imperial') {
+                temperature = (temperature - 273.15) * 1.8 + 32; // Converting to Fahrenheit degrees for imperial system
+                windSpeed = windSpeed * 3.6 / 1.609; // Converting to mph from m/s
+                windString = Math.round(windSpeed) + ' mph';
+                pressureString = (Math.round((pressure * 0.0145038) * 100) / 100) + ' psi';
+            }
+        }
+
         let imageURL: string = 'https://openweathermap.org/img/wn/02d.png';
         let windDirections: Array<string> = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
-        let windString: string = 'none';
         if (!('info' in this.state.weatherData)) {
             imageURL = 'https://openweathermap.org/img/wn/' + this.state.weatherData.data.icon + '.png';
             if (this.state.weatherData.data.windSpeed) {
-                windString = Math.floor(this.state.weatherData.data.windSpeed) + ' m/s';
                 if (this.state.weatherData.data.windDirection) {
                     windString = windString + "  " + windDirections[Math.floor(((this.state.weatherData.data.windDirection % 360) + 11.25)/22.5)];
                 }
@@ -102,9 +137,53 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
             tempTextFont = 'sans-serif-condensed';
             tempTextSize = 35;
           }
+        
         return(
             <View style={{flexDirection: 'column', padding: 10, margin: 10, borderRadius: 10, borderColor: 'lightblue', borderWidth: 3}}>
-                {!(this.state.weatherData.info) && <Text style={{width: '100%', fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>{((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1))}</Text>}
+                <Modal
+                    visible={this.state.showUnitsSettingsModal}
+                    transparent={false}>
+                        <View style={{  paddingTop: 150,
+                                        flexDirection: 'column',
+                                        alignContent: 'center',
+                                        alignItems: 'center'}}>
+                            <MaterialCommunityIcons name="settings-outline" size={40} color="gray" />
+                            <Text
+                                style={{fontSize: 20,
+                                        fontWeight: 'bold',
+                                        paddingTop: 10,
+                                        paddingBottom: 10}}>
+                                Units
+                            </Text>
+                            <Picker
+                                selectedValue={this.state.userUnits}
+                                style={{width: '50%', paddingBottom: 10,}}
+                                onValueChange={(itemValue, itemIndex) => {
+                                                storeValue('units', itemValue.toString());
+                                                this.setState({userUnits: itemValue.toString()});
+                                                }}>
+                                <Picker.Item label="metric" value="metric" />
+                                <Picker.Item label="imperial" value="imperial" />
+                            </Picker>
+                            <Button
+                                onPress={() => {
+                                    this.setState({showUnitsSettingsModal: false});
+                                }}
+                                title="OK"
+                                color="blue"
+                            />
+                        </View>
+                </Modal>
+                {!(this.state.weatherData.info) && 
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                        <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>
+                            {((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1))}
+                        </Text>
+                        <TouchableOpacity onPress={() => {this.setState({showUnitsSettingsModal: true});}}>
+                            <MaterialCommunityIcons name="settings-outline" size={24} color="gray" />
+                        </TouchableOpacity>
+                    </View>
+                }
                 <View style={{flexDirection: 'row', }}>
                     <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
                     {(this.state.weatherData.info) ?
@@ -118,11 +197,21 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                                     <MaterialCommunityIcons name="weather-windy" size={24} color="black" />
                                     <Text style={{fontSize: 20, paddingLeft: 10 }}>{windString}</Text>
                                 </View>
-                                <Text>{'Pressure: ' + this.state.weatherData.data.pressure + ' mbar'}</Text>
+                                <Text>{'Pressure: ' + pressureString}</Text>
                                 <Text>{'Humidity: ' + this.state.weatherData.data.humidity + '%'}</Text>
                             </View>
-                            <View style={{width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%', alignSelf: 'center', alignItems: 'center', alignContent: 'center'}}>
-                                <Text style={{fontSize: tempTextSize, fontWeight: 'bold', padding: 10, textAlign: 'center', textAlignVertical: 'center', fontFamily: tempTextFont,}}>{(Math.round(this.state.weatherData.data.temp - 273.15)) + '\u00b0'}</Text>
+                            <View style={{  width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%',
+                                            alignSelf: 'center',
+                                            alignItems: 'center',
+                                            alignContent: 'center'}}>
+                                <Text style={{  fontSize: tempTextSize,
+                                                fontWeight: 'bold',
+                                                padding: 10,
+                                                textAlign: 'center',
+                                                textAlignVertical: 'center',
+                                                fontFamily: tempTextFont,}}>
+                                    {(Math.round(temperature)) + '\u00b0'}
+                                </Text>
                             </View>
                         </View>)
                     }
@@ -345,6 +434,9 @@ export function LaunchDetails ({navigation, route}) {
     const swipe = new Animated.Value(swipeDirection * windowWidth);
     const animBorder = new Animated.Value(1);
 
+    const [showSwipeInstructionsModal, setSwipeInstructionsModalState] = useState(false);
+
+    // Swipe animation
     useLayoutEffect(() => {
         Animated.sequence([
             Animated.timing(swipe,
@@ -355,10 +447,23 @@ export function LaunchDetails ({navigation, route}) {
                 {toValue: 0,
                     isInteraction: false,
                 duration: 1,})
-        ]).start()
+        ]).start();
       });
 
-    //const pan = useRef(new Animated.ValueXY()).current;
+      // Checks done on Component Did Mount event
+      useEffect(() => {
+        
+        // Check should Instructions Modal be visible or not
+        async function readStoredModalVisibilityData(key) {
+            const flagStr = await getStoredValue(key);
+            if (flagStr !== 'false') {
+                setSwipeInstructionsModalState(true);
+            }
+        }
+        readStoredModalVisibilityData('showSwipeModalOnDetailsPage');
+
+      });
+
     const pan = useRef(new Animated.Value(0)).current;
   
     const panResponder = useRef(
@@ -400,7 +505,7 @@ export function LaunchDetails ({navigation, route}) {
             },
         })
     ).current;
-
+    
     if ('info' in LaunchCtx.launchData) {
           return(
               <Text>{LaunchCtx.launchData.info}</Text>
@@ -458,6 +563,35 @@ export function LaunchDetails ({navigation, route}) {
                                     }]} 
                                 {...panResponder.panHandlers}
                                 disableScrollViewPanResponder={true}>
+                                <Modal
+                                    visible={showSwipeInstructionsModal}
+                                    transparent={true}>
+                                    <View style={{  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    flexDirection: "column",
+                                                    alignItems: 'center',
+                                                    paddingTop: '40%'
+                                                    }}>
+                                        <Text style={{  fontSize: 20,
+                                                        fontWeight: 'bold',
+                                                        textAlign: 'center',
+                                                        paddingTop: 10,
+                                                        paddingBottom: 5}}>Instructions:</Text>
+                                        <Text style={{  textAlign: 'center',
+                                                        paddingTop: 5,
+                                                        paddingBottom: 5}}>Swipe left or right to browse through the launches</Text>
+                                        <MaterialCommunityIcons style={{paddingTop: 20, paddingBottom: 30}} name="gesture-swipe-horizontal" size={100} color="black" />
+                                        <Button
+                                            onPress={() => {
+                                                setSwipeInstructionsModalState(false);
+                                                storeValue('showSwipeModalOnDetailsPage', 'false');
+                                            }}
+                                            title="Got It"
+                                            color="blue"
+                                        />
+                                    </View>
+                                </Modal>
                                 <Text style={styles.title}>{LaunchCtx.launchData.launches[detailsIndex].name}</Text>
                                 <Text style={styles.date}>{(new Date(LaunchCtx.launchData.launches[detailsIndex].windowstart)).toString()}</Text>
                                 <Text style={styles.detailContainerStyle}>{launchDescription}</Text>
@@ -465,6 +599,14 @@ export function LaunchDetails ({navigation, route}) {
                                 <ImageDetailsContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <WeatherContainer weatherInput = {weatherInput}/>
                                 <ShowMap launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
+                                <Button
+                                    onPress={() => {
+                                        removeItem('showSwipeModalOnDetailsPage');
+                                        removeItem('units');
+                                    }}
+                                    title="Clear Cache"
+                                    color="blue"
+                                />
                                 <View style={{height: insets.bottom,}}></View>
                             </Animated.ScrollView>}
                     </SafeAreaConsumer>
