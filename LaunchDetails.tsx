@@ -8,6 +8,7 @@ import { paddingCorrection, defaultUnits } from './Constants';
 import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
 import { Marker } from 'react-native-maps';
+import {PanGestureHandler} from 'react-native-gesture-handler';
 
 function ShowMap ({launchItem}) {
 
@@ -157,7 +158,7 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                             </Text>
                             <Picker
                                 selectedValue={this.state.userUnits}
-                                style={{width: '50%', paddingBottom: 10,}}
+                                style={{width: 150, marginBottom: 30,}}
                                 onValueChange={(itemValue, itemIndex) => {
                                                 storeValue('units', itemValue.toString());
                                                 this.setState({userUnits: itemValue.toString()});
@@ -285,7 +286,7 @@ function ShowImage ({launchItem}) {
         Image.getSize(imageURL, (width, height) => {setIAR(width / height)}, () => {setIAR(1)});
     })
     
-    if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) {
+    if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder')) && (launchItem.rocket.imageURL.includes('https'))) {
       return (<Image style={[styles.imageStyle, {aspectRatio: imageAspectRatio}]} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>)
     } else {
       return (<View></View>)
@@ -300,7 +301,7 @@ function ImageDetailsContainer ({launchItem}) {
         if (windowWidth > windowHeight) {
             setFlexDir(0);
             //imageWidth set to !=0 only if there specific image to show. Otherwise image container should not take up any space.
-            if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) {
+            if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder')) && (launchItem.rocket.imageURL.includes('https'))) {
                 setImageWidth(30);
             } else {
                 setImageWidth(0);
@@ -464,45 +465,48 @@ export function LaunchDetails ({navigation, route}) {
 
       });
 
-    const pan = useRef(new Animated.Value(0)).current;
+    const [scrollEnabler, setScrollEnabler] = useState(true);
+
+    const pan = useRef(new Animated.ValueXY()).current;
   
     const panResponder = useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: (evt, gestureState) => true,
+            /* onStartShouldSetPanResponder: (evt, gestureState) => true,
             onStartShouldSetPanResponderCapture: (evt, gestureState) =>
-                true,
+                true, */
             onMoveShouldSetPanResponder: (evt, gestureState) => {
-                if (pan._value > 50) {
+                setScrollEnabler(false);
+                /* if (pan._value > 50) {
                     navigation.push('Details', {index: previousIndex, direction: -1});
                 } else if (pan._value < -50) {
                     navigation.push('Details', {index: nextIndex, direction: 1});
-                }
+                } */
                 return true;
             },
             onMoveShouldSetPanResponderCapture: (evt, gestureState) =>
                 true,
             onPanResponderGrant: () => {
-                return true;
             },
             onPanResponderMove: Animated.event(
                 [
                     null,
-                    { dx: pan }
+                    { dx: pan.x, dy: pan.y }
                 ]
             ),
-            onPanResponderTerminationRequest: (evt, gestureState) => true,
-            onPanResponderRelease: () => {
-                if (pan._value > 50) {
+            /* onPanResponderTerminationRequest: (evt, gestureState) => true, */
+            onPanResponderEnd: () => {
+                if (pan.x._value > 50) {
                     navigation.push('Details', {index: previousIndex, direction: -1});
-                } else if (pan._value < -50) {
+                } else if (pan.x._value < -50) {
                     navigation.push('Details', {index: nextIndex, direction: 1});
                 }
+                setScrollEnabler(true);
             },
-            onShouldBlockNativeResponder: (evt, gestureState) => {
+            /* onShouldBlockNativeResponder: (evt, gestureState) => {
                 // Returns whether this component should block native components from becoming the JS
                 // responder. Returns true by default. Is currently only supported on android.
                 return true;
-            },
+            }, */
         })
     ).current;
     
@@ -562,7 +566,8 @@ export function LaunchDetails ({navigation, route}) {
                                     borderRightWidth: animBorder
                                     }]} 
                                 {...panResponder.panHandlers}
-                                disableScrollViewPanResponder={true}>
+                                scrollEnabled={scrollEnabler}
+                                disableScrollViewPanResponder={false}>
                                 <Modal
                                     visible={showSwipeInstructionsModal}
                                     transparent={true}>

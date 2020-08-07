@@ -10,7 +10,7 @@ function ImageSelection ({launchItem}) {
   const imageSizes = launchItem.rocket.imageSizes;
   const minRocketImageSize = imageSizes[0] ? String(imageSizes[0]) : null;
   const maxRocketImageSize = imageSizes[0] ? String(imageSizes[imageSizes.length - 1]) : null;
-  const imageURL = (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) ? // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
+  const imageURL = (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder') && (launchItem.rocket.imageURL.includes('https')))) ? // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
                                     (maxRocketImageSize ? 
                                       launchItem.rocket.imageURL.replace(maxRocketImageSize + '.', minRocketImageSize +'.')
                                       : 
@@ -19,7 +19,7 @@ function ImageSelection ({launchItem}) {
                                     null;
   const localImage = './assets/versXplorerLogo_square_indigo.png';
   // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
-  if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) {
+  if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder')) && (launchItem.rocket.imageURL.includes('https'))) {
     return (<Image style={styles.imageStyle} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='cover'/>)
   } else {
     return (<Image style={styles.imageStyle} source={require(`${localImage}`)} resizeMethod = 'resize' resizeMode='cover'/>)
