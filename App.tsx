@@ -1,8 +1,11 @@
 import 'react-native-gesture-handler'; // Without this line on the very top of the entry file, when react-navigation is used, app may crash in production even if it works fine in development
 import React, { Component } from 'react';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
+import * as Permissions from 'expo-permissions';
 import { NavigationContainer} from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet, StatusBar, Animated, Alert } from 'react-native';
+import { StyleSheet, StatusBar, Animated, Alert, Platform } from 'react-native';
 import { SafeAreaProvider} from 'react-native-safe-area-context';
 import {askForData, storeValue, checkRegionUnits} from './commonFunctions';
 import {IAllLaunches} from './Interfaces';
@@ -24,6 +27,7 @@ export let LaunchContext = React.createContext<ILaunchContext>({refreshLaunchLis
 interface IStoredData {
   showSwipeModalOnDetailsPage?: string;
   units?: string;
+  expoPushToken?: Notifications.ExpoPushToken;
 }
 
 interface IState {
@@ -33,12 +37,27 @@ interface IState {
   storedData: IStoredData;
 }
 
+// storeToke API response format
+interface IdbMessage {
+  message?: string;
+}
+
+// unwantedData API response format
+interface IUnwantedData {
+  data?: [{
+    launchId: number;
+    name: string;
+  }];
+  message?: string;
+}
+
 export default class App extends React.Component<{}, IState> {
   constructor(props: {}){
     super(props);
 
     this.updateLaunchList = this.updateLaunchList.bind(this);
     this.initializeStorage = this.initializeStorage.bind(this);
+    this.registerForPushNotificationsAsync = this.registerForPushNotificationsAsync.bind(this);
     
     this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30', // this is the API address to load 30 next launches
                   launchData: initialLaunchData, // This is where the launch data will be stored, or error message
@@ -52,42 +71,132 @@ export default class App extends React.Component<{}, IState> {
     this.updateLaunchList();
     this.setState({storedData: {units: checkRegionUnits()}});
     this.initializeStorage();
+    this.registerForPushNotificationsAsync().then(token => this.storeNotificationsToken(token));
   }
 
   async updateLaunchList() {
     // introducing the temp variable and calculation if the launch date below is needed to exclude past launches if any
     // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)
-    // Assumption is that next launches are sorted chronologicaly from the earliest to the latest as they are at this moment.
+    // Also adding ability to remove unwanted data to appear in the list.
+    // When launchlibrary.org was moving to another library they added info about it as a part of the API response.
+    // Therefore my database contains manually filled table with the list of unwanted data to be removed from the list, if any.
+    // Unwanted data info is fetched with unwantedData API
     this.setState({refreshingData: true});
     let launchDataTemp: IAllLaunches = await askForData(this.state.launchURL);
-    if (!('info' in launchDataTemp)) {
-      let x: number = 0;
+    let unwantedData: IUnwantedData = await askForData('https://versxplorer.com/unwantedData.php');
+    if ('launches' in launchDataTemp) {
       let todayDate: Date = new Date();
-      let launchDate: Date = new Date(launchDataTemp.launches[x].windowstart);
-      while (launchDate < todayDate) {
-        launchDataTemp.launches.shift();
-        x++;
-        launchDate = new Date(launchDataTemp.launches[x].windowstart);
+      for (let x: number = 0; x < launchDataTemp.launches!.length; x++) {
+        let launchDate: Date = new Date(launchDataTemp.launches![x].windowstart);
+        if (launchDate < todayDate) {
+          launchDataTemp.launches!.splice(x, 1);
+        } else {
+          if ('data' in unwantedData) {
+            let wantedFlag: boolean = true;
+            let y: number = 0;
+            while (wantedFlag && y <  unwantedData.data!.length) {
+              if (launchDataTemp.launches![x].id === unwantedData.data![y].launchId || launchDataTemp.launches![x].name === unwantedData.data![y].name) {
+                launchDataTemp.launches!.splice(x, 1);
+                wantedFlag = false;
+              }
+              y++;
+            }
+          }
+        }
       }
     }
     this.setState({launchData: launchDataTemp, refreshingData: false});
-    // this.setState({launchData: await askForData(this.state.launchURL)});
   }
 
   async initializeStorage() {
     for (let key in this.state.storedData) {
       try {
-          const existingValue: string = await AsyncStorage.getItem(key);
-          if (existingValue == null) {
-            storeValue(key, this.state.storedData[key]);
-          } else {
-            this.setState({storedData: {[`${key}`]: existingValue}})
+        const existingValue: string = await AsyncStorage.getItem("key");
+        if (existingValue) {
+          this.setState({storedData: {[`${key}`]: existingValue}});
+        } else {
+          storeValue(key, this.state.storedData[key]);
+        }
+      } catch(e) {
+        return 'error reading value';
+      }
+    }
+  }
+
+  // function to store token in the database. This is needed to use token to send notifications from the back end
+  async storeTokenDB(token) {
+    const dbResponse: IdbMessage = await askForData('https://www.versxplorer.com/storeToken.php?token=' + token);
+        console.log(dbResponse);
+        if (dbResponse && dbResponse.message == 'Success') {
+          storeValue('tokenStored', 'true');
+        } else {
+          storeValue('tokenStored', 'false');
+        }
+  }
+  // After the token value is retreived by registerForPushNotificationsAsync() function:
+  // 1. Check if the token already exists in the local storage.
+  // 2. If token exists in the local storage, check if it is the same as the one retreived right now
+  // 3. If it is the same, check if the token was already successfully sent and stored in the database.
+  // 4. If not, send it and store it in the database.
+  // 5. If the token is different or it does not exists in the local storage, replace it with the new one in the local storage and send and store it in the database
+  // (question is what to do with the old one. It think there is the procedure done by Apple or Google that sends response
+  // to delete old and unused tokens)
+  async storeNotificationsToken(token) {
+    try {
+      const existingValue: string = await AsyncStorage.getItem('expoPushToken');
+      if (existingValue && existingValue == token) {
+        try {
+          const existingTokenStored: string = await AsyncStorage.getItem('tokenStored');
+          if (!(existingTokenStored) || existingTokenStored != 'true') {
+            // Store token. API to the database
+            this.storeTokenDB(token);
+            console.log('Same token present, not stored in DB');
           }
         } catch(e) {
           return 'error reading value';
         }
+      } else {
+        console.log('No or different token in local storage');
+        this.setState({storedData: {expoPushToken: token}});
+        storeValue('expoPushToken', token);
+        // Store token. API to the database
+        this.storeTokenDB(token);
       }
+    } catch(e) {
+      return 'error reading value';
     }
+  }
+
+  async registerForPushNotificationsAsync() {
+    let token;
+    if (Constants.isDevice) {
+      const { status: existingStatus } = await Permissions.getAsync(Permissions.NOTIFICATIONS);
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Permissions.askAsync(Permissions.NOTIFICATIONS);
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        alert('Failed to get push token for push notification!');
+        return;
+      }
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+      console.log(token);
+    } else {
+      alert('Must use physical device for Push Notifications');
+    }
+  
+    if (Platform.OS === 'android') {
+      Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+  
+    return token;
+  }
   
   public render() {
 

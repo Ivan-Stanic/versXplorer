@@ -10,7 +10,7 @@
     ],
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/versXplorerLogo_square_indigo.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",

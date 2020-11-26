@@ -1,7 +1,9 @@
 import React from 'react';
 import AsyncStorage from '@react-native-community/async-storage';
 import * as Cellular from 'expo-cellular';
+import * as Localization from 'expo-localization';
 import { defaultUnits } from './Constants';
+import { Alert } from 'react-native';
 
 export async function askForData(url: string) {
     //alert(url);
@@ -44,8 +46,11 @@ export async function removeItem (key: string) {
 }
 
 export function checkRegionUnits() {
-  const country = Cellular.isoCountryCode;
-  const imperialUnitsCountries: Array<string> = ['us', 'lr', 'mm'];
+  let country: string = Cellular.isoCountryCode;
+  // I noticed that country was empty on iOS, that's why Localization is used that works fine on iOS
+  if (!(country)) {country = Localization.region;} 
+  // but Localization returns country code in all caps
+  const imperialUnitsCountries: Array<string> = ['us', 'lr', 'mm', 'US', 'LR', 'MM'];
   let units: string = defaultUnits;
   if (imperialUnitsCountries.includes(country)) {
     units = 'imperial';

@@ -99,12 +99,14 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
 
     render() {
         // Calculating temperature values demending on measurement system, providing weather data exists
+        let weatherTitle: string = "Weather Data"
         let temperature: number = 0;
         let windSpeed: number = 0;
         let windString: string = windSpeed.toString();
         let pressure: number = 1000;
         let pressureString: string = pressure.toString();
         if (!(this.state.weatherData.info)) {
+            weatherTitle = ((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1));
             temperature = this.state.weatherData.data.temp;
             windSpeed = this.state.weatherData.data.windSpeed;
             pressure = this.state.weatherData.data.pressure;
@@ -144,47 +146,66 @@ class WeatherContainer extends React.Component<IWeatherProps, any> {
                 <Modal
                     visible={this.state.showUnitsSettingsModal}
                     transparent={false}>
-                        <View style={{  paddingTop: 150,
-                                        flexDirection: 'column',
+                        <View style={{  flexDirection: 'column',
                                         alignContent: 'center',
-                                        alignItems: 'center'}}>
-                            <MaterialCommunityIcons name="settings-outline" size={40} color="gray" />
-                            <Text
-                                style={{fontSize: 20,
-                                        fontWeight: 'bold',
-                                        paddingTop: 10,
-                                        paddingBottom: 10}}>
-                                Units
-                            </Text>
-                            <Picker
-                                selectedValue={this.state.userUnits}
-                                style={{width: 150, marginBottom: 30,}}
-                                onValueChange={(itemValue, itemIndex) => {
-                                                storeValue('units', itemValue.toString());
-                                                this.setState({userUnits: itemValue.toString()});
-                                                }}>
-                                <Picker.Item label="metric" value="metric" />
-                                <Picker.Item label="imperial" value="imperial" />
-                            </Picker>
-                            <Button
-                                onPress={() => {
-                                    this.setState({showUnitsSettingsModal: false});
-                                }}
-                                title="OK"
-                                color="blue"
-                            />
+                                        alignItems: 'center',
+                                        height: '100%'}}>
+                            <View style={{  paddingTop: 150,
+                                            flexDirection: 'column',
+                                            alignContent: 'center',
+                                            alignItems: 'center'}}>
+                                <MaterialCommunityIcons name="settings-outline" size={40} color="gray" />
+                                <Text
+                                    style={{fontSize: 20,
+                                            fontWeight: 'bold',
+                                            paddingTop: 10,
+                                            paddingBottom: 10}}>
+                                    Units
+                                </Text>
+                                <Picker
+                                    selectedValue={this.state.userUnits}
+                                    style={{width: 150, marginBottom: 30,}}
+                                    onValueChange={(itemValue, itemIndex) => {
+                                                    storeValue('units', itemValue.toString());
+                                                    this.setState({userUnits: itemValue.toString()});
+                                                    }}>
+                                    <Picker.Item label="metric" value="metric" />
+                                    <Picker.Item label="imperial" value="imperial" />
+                                </Picker>
+                                <Button
+                                    onPress={() => {
+                                        this.setState({showUnitsSettingsModal: false});
+                                    }}
+                                    title="OK"
+                                    color="blue"
+                                />
+                            </View>
+                            <View style={{  position: 'absolute',
+                                            bottom: 50,
+                                            alignContent: 'center',
+                                            alignItems: 'center'}}>
+                                <Button
+                                    onPress={() => {
+                                        removeItem('showSwipeModalOnDetailsPage');
+                                        removeItem('units');
+                                        removeItem('expoPushToken');
+                                        removeItem('tokenStored');
+                                        this.setState({showUnitsSettingsModal: false});
+                                    }}
+                                    title="Clear All Settings"
+                                    color="blue"
+                                />
+                            </View>
                         </View>
                 </Modal>
-                {!(this.state.weatherData.info) && 
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                        <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>
-                            {((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1))}
-                        </Text>
-                        <TouchableOpacity onPress={() => {this.setState({showUnitsSettingsModal: true});}}>
-                            <MaterialCommunityIcons name="settings-outline" size={24} color="gray" />
-                        </TouchableOpacity>
-                    </View>
-                }
+                <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>
+                        {weatherTitle}
+                    </Text>
+                    <TouchableOpacity onPress={() => {this.setState({showUnitsSettingsModal: true});}}>
+                        <MaterialCommunityIcons name="settings-outline" size={24} color="gray" />
+                    </TouchableOpacity>
+                </View>
                 <View style={{flexDirection: 'row', }}>
                     <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
                     {(this.state.weatherData.info) ?
@@ -246,14 +267,14 @@ function DetailsContainer ({launchItem}) {
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Type'}</Text>
             <Text style={[styles.missionDetailsText, {color: 'orange', fontWeight: 'bold',}]}>{missionType}</Text>
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Agency'}</Text>
-            <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{launchItem.lsp.name}</Text>
+            <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{(launchItem.lsp) ? launchItem.lsp.name : launchItem.rocket.agencies[0].name}</Text>
             <View style={[{
                             flex: 1,
                             flexDirection: 'row',
                             alignItems: 'center',
                             justifyContent: 'center',
                         }]}>
-                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.lsp.wikiURL);}}>
+                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL((launchItem.lsp) ? launchItem.lsp.wikiURL : launchItem.rocket.agencies[0].wikiURL);}}>
                     <FontAwesome name="wikipedia-w" size={20} color="black" />
                 </TouchableOpacity>
                 {(launchItem.vidURLs[0]) && <View style={{width: 20}}/>}
@@ -443,11 +464,13 @@ export function LaunchDetails ({navigation, route}) {
             Animated.timing(swipe,
                 {toValue: 0.5,
                   isInteraction: false,
-                duration: 300,}),
+                duration: 300,
+                useNativeDriver: false}),
             Animated.timing(animBorder,
                 {toValue: 0,
                     isInteraction: false,
-                duration: 1,})
+                duration: 1,
+                useNativeDriver: false})
         ]).start();
       });
 
@@ -604,14 +627,6 @@ export function LaunchDetails ({navigation, route}) {
                                 <ImageDetailsContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <WeatherContainer weatherInput = {weatherInput}/>
                                 <ShowMap launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
-                                <Button
-                                    onPress={() => {
-                                        removeItem('showSwipeModalOnDetailsPage');
-                                        removeItem('units');
-                                    }}
-                                    title="Clear Cache"
-                                    color="blue"
-                                />
                                 <View style={{height: insets.bottom,}}></View>
                             </Animated.ScrollView>}
                     </SafeAreaConsumer>
