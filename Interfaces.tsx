@@ -76,7 +76,7 @@ export interface IMissions{
     payloads: Array<string>;
 }
 
-export interface ILaunches{
+/*export interface ILaunches_old{
     id: number;
     name: string;
     windowstart: Date;
@@ -105,6 +105,45 @@ export interface ILaunches{
     rocket: IRocket;
     missions: IMissions[];
     lsp: IAgencies;
+}*/
+
+export interface ILaunches {
+    id: string;
+    name: string;
+    status: number;
+    net: number;
+    launch_service_provider_id: number;
+    launch_service_provider_name: string;
+    rocket_configuration_id: number; // new in API 1.0
+    rocket_configuration_name: string;
+    mission_name: string;
+    mission_description: string;
+    mission_type: string;
+    mission_orbit_name: string;
+    pad_id: number;
+    pad_name: string;
+    pad_latitude: number;
+    pad_longitude: number;
+    location_name: string;
+    location_country_code: string;
+    webcast_url: string;
+    image_url: string;
+    agency: {
+        type: string; // new in API 1.0
+        country_code: string; // new in API 1.0
+        abbrev: string; // new in API 1.0
+        description: string; // new in API 1.0
+        info_url: string;
+        wiki_url: string;
+        logo_url: string;
+    };
+    rocket: { // new in API 1.0
+        description: string;
+        info_url: string;
+        wiki_url: string;
+        image_url: string;
+    }
+    weather: IWeatherData;
 }
 
 export interface IOneLaunch{
@@ -130,9 +169,8 @@ export interface IAllLaunchesExists{
 
 // Weather Data Structure:
 
-export interface IWeatherApiData {
-    id: number;
-    period: string;
+export interface IWeatherData {
+    period: number;
     weather: string;
     description: string;
     icon: string;
@@ -140,13 +178,8 @@ export interface IWeatherApiData {
     pressure: number;
     humidity: number;
     clouds: number;
-    windSpeed: number;
-    windDirection: number;
+    wind_speed: number;
+    wind_direction: number;
     rain: number;
     snow: number;
-}
-
-export interface IWeatherData {
-    data?: IWeatherApiData;
-    info?: string;
 }

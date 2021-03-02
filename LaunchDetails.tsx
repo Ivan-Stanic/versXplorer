@@ -17,15 +17,15 @@ function ShowMap ({launchItem}) {
             <MapView
                 style={{height: '100%'}}
                 region={{
-                    latitude: launchItem.location.pads[0].latitude,
-                    longitude: launchItem.location.pads[0].longitude,
+                    latitude: launchItem.pad_latitude,
+                    longitude: launchItem.pad_longitude,
                     latitudeDelta: 1.5,
                     longitudeDelta: 1.5,
                 }}>
                 <Marker
                     coordinate={{
-                        latitude: launchItem.location.pads[0].latitude,
-                        longitude: launchItem.location.pads[0].longitude,}}>
+                        latitude: launchItem.pad_latitude,
+                        longitude: launchItem.pad_longitude,}}>
                     <View style={{padding: 10,}}>
                         <Image style={{width: 35, height: 35}} source={require('./assets/versXplorerLogo_square_indigo.png')} resizeMethod = 'resize' resizeMode='cover'/>
                     </View>
@@ -36,225 +36,185 @@ function ShowMap ({launchItem}) {
     )
 }
 
-interface IWeatherInput {
-    padId: number;
-    windowstart: Date;
-    weatherTimeInterval: string;
-}
+function WeatherContainer({launchItem}) {
 
-interface IWeatherProps {
-    weatherInput: IWeatherInput;
-}
-
-let initialWeatherData: IWeatherData = {info: 'Connencting...'};
-
-class WeatherContainer extends React.Component<IWeatherProps, any> {
-    constructor(props: IWeatherProps){
-        super(props);
-        this.state = {weatherData: initialWeatherData,
-                      padId: 9999,
-                      showUnitsSettingsModal: false,
-                      userUnits: defaultUnits,
-        };
-        this.fetchData = this.fetchData.bind(this);
-        this.readStoredUserUnits = this.readStoredUserUnits.bind(this);
+    const [showUnitsSettingsModal, setShowUnitsSettingsModal] = useState(false);
+    const [userUnits, setUserUnits] = useState(defaultUnits);
+    let missingWeatherDataInfo: string = '';
+    if (!(launchItem.weather.weather)) {
+        if (((new Date(launchItem.net * 1000)).getTime() - (new Date()).getTime()) < 5*24*3600*1000) {
+            missingWeatherDataInfo = 'Weather data not available';
+        } else {
+            missingWeatherDataInfo = 'Weather data is only available up to approximately 5 days before the launch window';
+        }
     }
+
     
-    public componentDidMount() {
-        this.fetchData();
-        this.readStoredUserUnits();
-    }
+    useEffect(() => {
 
-    public componentDidUpdate() {
-        if (this.props.weatherInput.padId !== this.state.padId) {this.fetchData();}
-    }
+        async function readStoredUserUnits() {
+            const uUnits = await getStoredValue('units');
+            if (uUnits) {
+                setUserUnits(uUnits)
+            } else {
+                setUserUnits(checkRegionUnits());
+            }
+            return uUnits;
+        }
 
-    public componentWillUnmount() {
-        this.setState({weatherData: initialWeatherData, padId: 9999});
-    }
+        readStoredUserUnits();
+      });
 
-    public async fetchData() {
-        const hoursToLaunch: number = ((new Date(this.props.weatherInput.windowstart)).getTime() - (new Date()).getTime())/1000/60/60;
-        if (hoursToLaunch < 117 && hoursToLaunch > 0) {
-            this.setState({weatherData: await askForData('https://www.versxplorer.com/weather.php?padId=' + this.props.weatherInput.padId + '&period=' + this.props.weatherInput.weatherTimeInterval),
-                padId: this.props.weatherInput.padId});
-        } else if (hoursToLaunch >= 117) {
-            this.setState({weatherData: {info: 'Weather data is only available up to approximately 5 days before launch window.'},
-                padId: this.props.weatherInput.padId});
-        } else {
-            this.setState({weatherData: {info: 'No data'},
-                padId: this.props.weatherInput.padId});
+    // Calculating temperature values demending on measurement system, providing weather data exists
+    let weatherTitle: string = "Weather Data";
+    let temperature: number = 0;
+    let windSpeed: number = 0;
+    let windString: string = windSpeed.toString();
+    let pressure: number = 1000;
+    let pressureString: string = pressure.toString();
+    if (launchItem.weather.weather) {
+        weatherTitle = ((launchItem.weather.description).slice(0, 1)).toUpperCase() + (launchItem.weather.description.slice(1));
+        temperature = launchItem.weather.temp;
+        windSpeed = launchItem.weather.wind_speed;
+        pressure = launchItem.weather.pressure;
+        if (userUnits == 'metric') {
+            temperature = temperature - 273.15; //Converting to Celsius degrees for metic system
+            windSpeed = windSpeed * 3.6; // Converting to km/h from m/s
+            windString = Math.round(windSpeed) + ' km/h';
+            pressureString = Math.round(pressure) + ' mbar';
+        } else if (userUnits == 'imperial') {
+            temperature = (temperature - 273.15) * 1.8 + 32; // Converting to Fahrenheit degrees for imperial system
+            windSpeed = windSpeed * 3.6 / 1.609; // Converting to mph from m/s
+            windString = Math.round(windSpeed) + ' mph';
+            pressureString = (Math.round((pressure * 0.0145038) * 100) / 100) + ' psi';
         }
     }
 
-    async readStoredUserUnits() {
-        const uUnits = await getStoredValue('units');
-        if (uUnits) {
-            this.setState({userUnits: uUnits})
-        } else {
-            this.setState({userUnits: checkRegionUnits()});
-        }
-        return uUnits;
-    }
-
-    render() {
-        // Calculating temperature values demending on measurement system, providing weather data exists
-        let weatherTitle: string = "Weather Data"
-        let temperature: number = 0;
-        let windSpeed: number = 0;
-        let windString: string = windSpeed.toString();
-        let pressure: number = 1000;
-        let pressureString: string = pressure.toString();
-        if (!(this.state.weatherData.info)) {
-            weatherTitle = ((this.state.weatherData.data.description).slice(0, 1)).toUpperCase() + (this.state.weatherData.data.description.slice(1));
-            temperature = this.state.weatherData.data.temp;
-            windSpeed = this.state.weatherData.data.windSpeed;
-            pressure = this.state.weatherData.data.pressure;
-            if (this.state.userUnits == 'metric') {
-                temperature = temperature - 273.15; //Converting to Celsius degrees for metic system
-                windSpeed = windSpeed * 3.6; // Converting to km/h from m/s
-                windString = Math.round(windSpeed) + ' km/h';
-                pressureString = Math.round(pressure) + ' mbar';
-            } else if (this.state.userUnits == 'imperial') {
-                temperature = (temperature - 273.15) * 1.8 + 32; // Converting to Fahrenheit degrees for imperial system
-                windSpeed = windSpeed * 3.6 / 1.609; // Converting to mph from m/s
-                windString = Math.round(windSpeed) + ' mph';
-                pressureString = (Math.round((pressure * 0.0145038) * 100) / 100) + ' psi';
+    let imageURL: string = 'https://openweathermap.org/img/wn/02d.png';
+    let windDirections: Array<string> = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
+    if (launchItem.weather.weather) {
+        imageURL = 'https://openweathermap.org/img/wn/' + launchItem.weather.icon + '.png';
+        if (launchItem.weather.wind_speed) {
+            if (launchItem.weather.wind_direction) {
+                windString = windString + "  " + windDirections[Math.floor(((launchItem.weather.wind_direction % 360) + 11.25)/22.5)];
             }
         }
-
-        let imageURL: string = 'https://openweathermap.org/img/wn/02d.png';
-        let windDirections: Array<string> = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW', 'N']
-        if (!('info' in this.state.weatherData)) {
-            imageURL = 'https://openweathermap.org/img/wn/' + this.state.weatherData.data.icon + '.png';
-            if (this.state.weatherData.data.windSpeed) {
-                if (this.state.weatherData.data.windDirection) {
-                    windString = windString + "  " + windDirections[Math.floor(((this.state.weatherData.data.windDirection % 360) + 11.25)/22.5)];
-                }
-            }
+    }
+    const imageWidth: number = 25;
+    let tempTextFont: string = 'DIN Condensed';
+    let tempTextSize: number = 40;
+    if (Platform.OS === 'android') {
+        tempTextFont = 'sans-serif-condensed';
+        tempTextSize = 35;
         }
-        const imageWidth: number = 25;
-        let tempTextFont: string = 'DIN Condensed';
-        let tempTextSize: number = 40;
-        if (Platform.OS === 'android') {
-            tempTextFont = 'sans-serif-condensed';
-            tempTextSize = 35;
-          }
-        
-        return(
-            <View style={{flexDirection: 'column', padding: 10, margin: 10, borderRadius: 10, borderColor: 'lightblue', borderWidth: 3}}>
-                <Modal
-                    visible={this.state.showUnitsSettingsModal}
-                    transparent={false}>
-                        <View style={{  flexDirection: 'column',
+    
+    return(
+        <View style={{flexDirection: 'column', padding: 10, margin: 10, borderRadius: 10, borderColor: 'lightblue', borderWidth: 3}}>
+            <Modal
+                visible={showUnitsSettingsModal}
+                transparent={false}>
+                    <View style={{  flexDirection: 'column',
+                                    alignContent: 'center',
+                                    alignItems: 'center',
+                                    height: '100%'}}>
+                        <View style={{  paddingTop: 150,
+                                        flexDirection: 'column',
                                         alignContent: 'center',
-                                        alignItems: 'center',
-                                        height: '100%'}}>
-                            <View style={{  paddingTop: 150,
-                                            flexDirection: 'column',
-                                            alignContent: 'center',
-                                            alignItems: 'center'}}>
-                                <MaterialCommunityIcons name="settings-outline" size={40} color="gray" />
-                                <Text
-                                    style={{fontSize: 20,
-                                            fontWeight: 'bold',
-                                            paddingTop: 10,
-                                            paddingBottom: 10}}>
-                                    Units
-                                </Text>
-                                <Picker
-                                    selectedValue={this.state.userUnits}
-                                    style={{width: 150, marginBottom: 30,}}
-                                    onValueChange={(itemValue, itemIndex) => {
-                                                    storeValue('units', itemValue.toString());
-                                                    this.setState({userUnits: itemValue.toString()});
-                                                    }}>
-                                    <Picker.Item label="metric" value="metric" />
-                                    <Picker.Item label="imperial" value="imperial" />
-                                </Picker>
-                                <Button
-                                    onPress={() => {
-                                        this.setState({showUnitsSettingsModal: false});
-                                    }}
-                                    title="OK"
-                                    color="blue"
-                                />
-                            </View>
-                            <View style={{  position: 'absolute',
-                                            bottom: 50,
-                                            alignContent: 'center',
-                                            alignItems: 'center'}}>
-                                <Button
-                                    onPress={() => {
-                                        removeItem('showSwipeModalOnDetailsPage');
-                                        removeItem('units');
-                                        removeItem('expoPushToken');
-                                        removeItem('tokenStored');
-                                        this.setState({showUnitsSettingsModal: false});
-                                    }}
-                                    title="Clear All Settings"
-                                    color="blue"
-                                />
-                            </View>
+                                        alignItems: 'center'}}>
+                            <MaterialCommunityIcons name="settings-outline" size={40} color="gray" />
+                            <Text
+                                style={{fontSize: 20,
+                                        fontWeight: 'bold',
+                                        paddingTop: 10,
+                                        paddingBottom: 10}}>
+                                Units
+                            </Text>
+                            <Picker
+                                selectedValue={userUnits}
+                                style={{width: 150, marginBottom: 30,}}
+                                onValueChange={(itemValue, itemIndex) => {
+                                                storeValue('units', itemValue.toString());
+                                                setUserUnits(itemValue.toString());
+                                                }}>
+                                <Picker.Item label="metric" value="metric" />
+                                <Picker.Item label="imperial" value="imperial" />
+                            </Picker>
+                            <Button
+                                onPress={() => {
+                                    setShowUnitsSettingsModal(false);
+                                }}
+                                title="OK"
+                                color="blue"
+                            />
                         </View>
-                </Modal>
-                <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>
-                        {weatherTitle}
-                    </Text>
-                    <TouchableOpacity onPress={() => {this.setState({showUnitsSettingsModal: true});}}>
-                        <MaterialCommunityIcons name="settings-outline" size={24} color="gray" />
-                    </TouchableOpacity>
-                </View>
-                <View style={{flexDirection: 'row', }}>
-                    <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
-                    {(this.state.weatherData.info) ?
-                        (<View style={{width: (100 - imageWidth).toString() + '%', }}>
-                            <Text style={{margin: 'auto',}}>{this.state.weatherData.info}</Text>
-                        </View>)
-                    :
-                        (<View style={{width: (100 - imageWidth).toString() + '%', flexDirection: 'row', alignItems: 'center'}}>
-                            <View style={{width: (100 - (imageWidth / (1 - (imageWidth / 100)))).toString() + '%', alignItems: 'center'}}>
-                                <View style={{flexDirection: 'row', }}>
-                                    <MaterialCommunityIcons name="weather-windy" size={24} color="black" />
-                                    <Text style={{fontSize: 20, paddingLeft: 10 }}>{windString}</Text>
-                                </View>
-                                <Text>{'Pressure: ' + pressureString}</Text>
-                                <Text>{'Humidity: ' + this.state.weatherData.data.humidity + '%'}</Text>
-                            </View>
-                            <View style={{  width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%',
-                                            alignSelf: 'center',
-                                            alignItems: 'center',
-                                            alignContent: 'center'}}>
-                                <Text style={{  fontSize: tempTextSize,
-                                                fontWeight: 'bold',
-                                                padding: 10,
-                                                textAlign: 'center',
-                                                textAlignVertical: 'center',
-                                                fontFamily: tempTextFont,}}>
-                                    {(Math.round(temperature)) + '\u00b0'}
-                                </Text>
-                            </View>
-                        </View>)
-                    }
-                </View>
-                {!(this.state.weatherData.info) && <TouchableOpacity onPress={() => {Linking.openURL('https://openweathermap.org');}}>
-                                                        <Text style={{width: '100%', fontSize: 12, textAlign: 'center', marginTop: 10, color: 'blue', textDecorationLine: 'underline'}} >openweathermap.org</Text>
-                                                    </TouchableOpacity>}
+                        <View style={{  position: 'absolute',
+                                        bottom: 50,
+                                        alignContent: 'center',
+                                        alignItems: 'center'}}>
+                            <Button
+                                onPress={() => {
+                                    removeItem('showSwipeModalOnDetailsPage');
+                                    removeItem('units');
+                                    removeItem('expoPushToken');
+                                    removeItem('tokenStored');
+                                    setShowUnitsSettingsModal(false);
+                                }}
+                                title="Clear All Settings"
+                                color="blue"
+                            />
+                        </View>
+                    </View>
+            </Modal>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                <Text style={{fontSize: 20, textAlign: 'center', marginBottom: 10, fontWeight: 'bold',}}>
+                    {weatherTitle}
+                </Text>
+                <TouchableOpacity onPress={() => {setShowUnitsSettingsModal(true);}}>
+                    <MaterialCommunityIcons name="settings-outline" size={24} color="gray" />
+                </TouchableOpacity>
             </View>
-        )
-    }
+            <View style={{flexDirection: 'row', }}>
+                <Image style={{width: imageWidth.toString() + '%', }} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>
+                {(!(launchItem.weather.weather)) ?
+                    (<View style={{width: (100 - imageWidth).toString() + '%', }}>
+                        <Text style={{margin: 'auto',}}>{missingWeatherDataInfo}</Text>
+                    </View>)
+                :
+                    (<View style={{width: (100 - imageWidth).toString() + '%', flexDirection: 'row', alignItems: 'center'}}>
+                        <View style={{width: (100 - (imageWidth / (1 - (imageWidth / 100)))).toString() + '%', alignItems: 'center'}}>
+                            <View style={{flexDirection: 'row', }}>
+                                <MaterialCommunityIcons name="weather-windy" size={24} color="black" />
+                                <Text style={{fontSize: 20, paddingLeft: 10 }}>{windString}</Text>
+                            </View>
+                            <Text>{'Pressure: ' + pressureString}</Text>
+                            <Text>{'Humidity: ' + launchItem.weather.humidity + '%'}</Text>
+                        </View>
+                        <View style={{  width: (imageWidth / (1 - (imageWidth / 100))).toString() + '%',
+                                        alignSelf: 'center',
+                                        alignItems: 'center',
+                                        alignContent: 'center'}}>
+                            <Text style={{  fontSize: tempTextSize,
+                                            fontWeight: 'bold',
+                                            padding: 10,
+                                            textAlign: 'center',
+                                            textAlignVertical: 'center',
+                                            fontFamily: tempTextFont,}}>
+                                {(Math.round(temperature)) + '\u00b0'}
+                            </Text>
+                        </View>
+                    </View>)
+                }
+            </View>
+            {(launchItem.weather.weather) && <TouchableOpacity onPress={() => {Linking.openURL('https://openweathermap.org');}}>
+                                                    <Text style={{width: '100%', fontSize: 12, textAlign: 'center', marginTop: 10, color: 'blue', textDecorationLine: 'underline'}} >openweathermap.org</Text>
+                                                </TouchableOpacity>}
+        </View>
+    )
 }
 
 function DetailsContainer ({launchItem}) {
-    let missionType: string = '';
-    let missionName: string = '';
-    for (const val of launchItem.missions) {
-        missionType = missionType + val.typeName + ', ';
-        missionName = missionName + val.name + ' | ';
-    }
-    missionType = missionType.slice(0, missionType.length - 2);
-    missionName = missionName.slice(0, missionName.length - 3);
+    const missionType: string = launchItem.mission_type;
+    let missionName: string = launchItem.mission_name;
     
     return (
         <View style={[styles.detailContainerStyle, {
@@ -267,27 +227,27 @@ function DetailsContainer ({launchItem}) {
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Type'}</Text>
             <Text style={[styles.missionDetailsText, {color: 'orange', fontWeight: 'bold',}]}>{missionType}</Text>
             <Text style={{paddingTop: 10, paddingBottom: 0}}>{'Agency'}</Text>
-            <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{(launchItem.lsp) ? launchItem.lsp.name : launchItem.rocket.agencies[0].name}</Text>
+            <Text style={[styles.missionDetailsText, {fontWeight: 'bold',}]}>{launchItem.launch_service_provider_name}</Text>
             <View style={[{
                             flex: 1,
                             flexDirection: 'row',
                             alignItems: 'center',
                             justifyContent: 'center',
                         }]}>
-                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL((launchItem.lsp) ? launchItem.lsp.wikiURL : launchItem.rocket.agencies[0].wikiURL);}}>
+                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.agency.wiki_url);}}>
                     <FontAwesome name="wikipedia-w" size={20} color="black" />
                 </TouchableOpacity>
-                {(launchItem.vidURLs[0]) && <View style={{width: 20}}/>}
-                {(launchItem.vidURLs[0]) && <TouchableOpacity onPress={() => {Linking.openURL(launchItem.vidURLs[0]);}}><MaterialIcons name="live-tv" size={32} color="black" /></TouchableOpacity>}
+                {(launchItem.webcast_url) && <View style={{width: 20}}/>}
+                {(launchItem.webcast_url) && <TouchableOpacity onPress={() => {Linking.openURL(launchItem.webcast_url);}}><MaterialIcons name="live-tv" size={32} color="black" /></TouchableOpacity>}
             </View>
             <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 10,}}>
                 <SimpleLineIcons style={{paddingRight: 10,}} name="location-pin" size={32} color="black" />
-                <Text style={[styles.missionDetailsText, {width: '80%'}]}>{launchItem.location.pads[0].name + ", " + launchItem.location.name}</Text>
+                <Text style={[styles.missionDetailsText, {width: '80%'}]}>{launchItem.pad_name + ", " + launchItem.location_name}</Text>
             </View>
             <View style={{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingTop: 10, paddingBottom: 10, width: '100%'}}>
                 <SimpleLineIcons name="rocket" size={24} color="black" />
-                <Text style={[styles.missionDetailsText, {fontWeight: 'bold', maxWidth: '60%', paddingLeft: 10, paddingRight: 10,}]}>{launchItem.rocket.name}</Text>
-                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.rocket.wikiURL);}}>
+                <Text style={[styles.missionDetailsText, {fontWeight: 'bold', maxWidth: '60%', paddingLeft: 10, paddingRight: 10,}]}>{launchItem.rocket_configuration_name}</Text>
+                <TouchableOpacity style={{padding: 3}} onPress={() => {Linking.openURL(launchItem.rocket.wiki_url);}}>
                     <FontAwesome name="wikipedia-w" size={20} color="black" />
                 </TouchableOpacity>
             </View>
@@ -296,18 +256,14 @@ function DetailsContainer ({launchItem}) {
   }
 
 function ShowImage ({launchItem}) {
-    const imageURL = (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder'))) ? // The existance of the word 'placeholder' may change in the future. It is wise to have database of your own pictures.
-                                      launchItem.rocket.imageURL
-                                      : 
-                                      "https://versxplorer.com/Images/versXplorerLogo_square_indigo.png";
-    //const localImage = './assets/versXplorerLogo_square_indigo.png';
+    const imageURL = (launchItem.image_url) ? launchItem.image_url : "https://versxplorer.com/Images/versXplorerLogo_square_indigo.png";
     const [imageAspectRatio, setIAR] = useState(1);
 
     useEffect(() => {
         Image.getSize(imageURL, (width, height) => {setIAR(width / height)}, () => {setIAR(1)});
     })
     
-    if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder')) && (launchItem.rocket.imageURL.includes('https'))) {
+    if (launchItem.image_url && (launchItem.image_url.includes('https'))) {
       return (<Image style={[styles.imageStyle, {aspectRatio: imageAspectRatio}]} source={{uri: `${imageURL}`}} resizeMethod = 'resize' resizeMode='contain'/>)
     } else {
       return (<View></View>)
@@ -322,7 +278,7 @@ function ImageDetailsContainer ({launchItem}) {
         if (windowWidth > windowHeight) {
             setFlexDir(0);
             //imageWidth set to !=0 only if there specific image to show. Otherwise image container should not take up any space.
-            if (launchItem.rocket.imageURL && !(launchItem.rocket.imageURL.includes('placeholder')) && (launchItem.rocket.imageURL.includes('https'))) {
+            if (launchItem.image_url && (launchItem.image_url.includes('https'))) {
                 setImageWidth(30);
             } else {
                 setImageWidth(0);
@@ -352,7 +308,7 @@ function ImageDetailsContainer ({launchItem}) {
 }
 
 interface ICtDwnProps {
-    windowStart: Date;
+    net: number;
 }
 
 interface ICtDwnValues {
@@ -380,7 +336,7 @@ function Countdown (props: ICtDwnProps) {
     }
 
     function setCtDwn () {
-        const miliSecDiff = (new Date(props.windowStart)).getTime() - (new Date()).getTime();
+        const miliSecDiff = (new Date(props.net * 1000)).getTime() - (new Date()).getTime();
         const days = Math.floor(miliSecDiff/1000/60/60/24);
         const hours = Math.floor(miliSecDiff/1000/60/60) - (days * 24);
         const mins = Math.floor(miliSecDiff/1000/60) - (days * 24 * 60) - (hours * 60);
@@ -432,16 +388,8 @@ export function LaunchDetails ({navigation, route}) {
     const detailsIndex: number = parseInt(JSON.stringify(index));
 
     // Calculation of the previous and next index for pan gesture to work. Excludes past launches if any
-    // (sometimes Lounch library API returns past launches from the very recent past, like couple of hours ago)
-    /* const nextLaunchDate: Date = new Date (LaunchData.launches[(detailsIndex + 1) % (LaunchData.launches.length)].windowstart);
-    const previousLaunchDate: Date = new Date (LaunchData.launches[((detailsIndex - 1) < 0) ? (LaunchData.launches.length - 1) : (detailsIndex - 1)].windowstart);
-    const today: Date = new Date();
-    let nextIndex: number = (detailsIndex + 1) % (LaunchData.launches.length);
-    while (today > nextLaunchDate) {
-        nextIndex = (nextIndex + 1) % (LaunchData.launches.length);
-    }
-    let previousIndex: number = (((detailsIndex - 1) < 0) || (today > previousLaunchDate)) ? (LaunchData.launches.length - 1) : (detailsIndex - 1); */
-
+    // (database keeps launches from the very recent past, like up to a 24 hours ago)
+    
     let nextIndex: number = (detailsIndex + 1) % (LaunchCtx.launchData.launches.length);
     let previousIndex: number = ((detailsIndex - 1) < 0) ? (LaunchCtx.launchData.launches.length - 1) : (detailsIndex - 1);
     
@@ -559,21 +507,8 @@ export function LaunchDetails ({navigation, route}) {
                                         </TouchableOpacity>
                                     ),
                                     });
-            let launchDescription: string = '';
-            for (const val of LaunchCtx.launchData.launches[detailsIndex].missions) {
-                launchDescription = launchDescription + val.description + ' ';
-            }
-            const d = new Date(LaunchCtx.launchData.launches[detailsIndex].windowstart);
-            const weatherDate: string = (d.toISOString()).slice(0, 10);
-            let weatherHourN: number = parseInt((d.toISOString()).slice(11, 13)) - (parseInt((d.toISOString()).slice(11, 13)) % 3);
-            let weatherHour: string = weatherHourN.toString();
-            if (weatherHourN < 10) {weatherHour = '0' + weatherHour}
-            const weatherTimeInterval: string = weatherDate + ' ' + weatherHour + ':00:00';
-            const weatherInput: IWeatherInput = {
-                padId: LaunchCtx.launchData.launches[detailsIndex].location.pads[0].id,
-                windowstart: LaunchCtx.launchData.launches[detailsIndex].windowstart,
-                weatherTimeInterval: weatherTimeInterval
-            }
+            const launchDescription: string = LaunchCtx.launchData.launches[detailsIndex].mission_description;
+            const d = new Date(LaunchCtx.launchData.launches[detailsIndex].net);
             return (
                 <View style={styles.container}>
                     <SafeAreaConsumer>{insets => 
@@ -621,11 +556,11 @@ export function LaunchDetails ({navigation, route}) {
                                     </View>
                                 </Modal>
                                 <Text style={styles.title}>{LaunchCtx.launchData.launches[detailsIndex].name}</Text>
-                                <Text style={styles.date}>{(new Date(LaunchCtx.launchData.launches[detailsIndex].windowstart)).toString()}</Text>
+                                <Text style={styles.date}>{(new Date(LaunchCtx.launchData.launches[detailsIndex].net)).toString()}</Text>
                                 <Text style={styles.detailContainerStyle}>{launchDescription}</Text>
-                                <Countdown windowStart = {LaunchCtx.launchData.launches[detailsIndex].windowstart}/>
+                                <Countdown net = {LaunchCtx.launchData.launches[detailsIndex].net}/>
                                 <ImageDetailsContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
-                                <WeatherContainer weatherInput = {weatherInput}/>
+                                <WeatherContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <ShowMap launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <View style={{height: insets.bottom,}}></View>
                             </Animated.ScrollView>}

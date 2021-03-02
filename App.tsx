@@ -59,7 +59,7 @@ export default class App extends React.Component<{}, IState> {
     this.initializeStorage = this.initializeStorage.bind(this);
     this.registerForPushNotificationsAsync = this.registerForPushNotificationsAsync.bind(this);
     
-    this.state = {launchURL: 'https://launchlibrary.net/1.4/launch/next/30', // this is the API address to load 30 next launches
+    this.state = {launchURL: 'https://versxplorer.com/api/1.0/', // this is the API address to load 30 next launches
                   launchData: initialLaunchData, // This is where the launch data will be stored, or error message
                   refreshingData: false, // This indicates that data is bein refreshed. Used in Flat List in LauchList Component.
                   storedData: { showSwipeModalOnDetailsPage: 'true',
@@ -85,17 +85,16 @@ export default class App extends React.Component<{}, IState> {
     let launchDataTemp: IAllLaunches = await askForData(this.state.launchURL);
     let unwantedData: IUnwantedData = await askForData('https://versxplorer.com/unwantedData.php');
     if ('launches' in launchDataTemp) {
-      let todayDate: Date = new Date();
       for (let x: number = 0; x < launchDataTemp.launches!.length; x++) {
-        let launchDate: Date = new Date(launchDataTemp.launches![x].windowstart);
-        if (launchDate < todayDate) {
+      const miliSecDiff = (new Date(launchDataTemp.launches![x].net * 1000)).getTime() - (new Date()).getTime();
+        if (miliSecDiff < 0) {
           launchDataTemp.launches!.splice(x, 1);
         } else {
           if ('data' in unwantedData) {
             let wantedFlag: boolean = true;
             let y: number = 0;
             while (wantedFlag && y <  unwantedData.data!.length) {
-              if (launchDataTemp.launches![x].id === unwantedData.data![y].launchId || launchDataTemp.launches![x].name === unwantedData.data![y].name) {
+              if (launchDataTemp.launches![x].name === unwantedData.data![y].name || launchDataTemp.launches![x].name === unwantedData.data![y].name) {
                 launchDataTemp.launches!.splice(x, 1);
                 wantedFlag = false;
               }
