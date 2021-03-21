@@ -1,14 +1,13 @@
 import React, { useRef, useContext, useLayoutEffect, useEffect, useState } from 'react';
-import {LaunchContext, ILaunchContext} from './App';
 import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform, Modal, Picker } from 'react-native'
-import {askForData, getStoredValue, storeValue, removeItem, checkRegionUnits} from './commonFunctions';
-import {IWeatherData} from './Interfaces';
+import {getStoredValue, storeValue, removeItem, checkRegionUnits, LaunchContext, paddingCorrection, defaultUnits} from './common';
+import {ILaunchContext} from './Interfaces';
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
-import { paddingCorrection, defaultUnits } from './Constants';
 import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
 import { Marker } from 'react-native-maps';
-import {PanGestureHandler} from 'react-native-gesture-handler';
+import { HeaderBackButton } from '@react-navigation/stack';
+
 
 function ShowMap ({launchItem}) {
 
@@ -422,7 +421,7 @@ export function LaunchDetails ({navigation, route}) {
         ]).start();
       });
 
-      // Checks done on Component Did Mount event
+      // Component Did Mount event
       useEffect(() => {
         
         // Check should Instructions Modal be visible or not
@@ -433,6 +432,28 @@ export function LaunchDetails ({navigation, route}) {
             }
         }
         readStoredModalVisibilityData('showSwipeModalOnDetailsPage');
+
+        // This part essentially overrides the Stack.Screen navigation component name='Details'
+        // defined inside the App component.
+        // This kind of action needs to be done inside componentDidMount function.
+        // Otherwise it will throw Warning: 'Cannot update a component from inside the function body of a different component'
+        const localImage = './assets/versXplorerLogo_square_indigo.png';
+        navigation.setOptions({ title: LaunchCtx.launchData.launches[detailsIndex].name,
+                                headerLeft: () => (
+                                    <TouchableOpacity onPress={() => navigation.navigate('Home')}>
+                                        <View style={{paddingLeft: 20, height: '100%', paddingTop: '10%'}}>
+                                            <Image style={{
+                                                    height: '80%',
+                                                    minHeight: 20,
+                                                    width: 20,
+                                                    }}
+                                                    source={require(`${localImage}`)}
+                                                    resizeMethod = 'resize'
+                                                    resizeMode='cover'/>
+                                        </View>
+                                    </TouchableOpacity>
+                                ), 
+                                });
 
       });
 
@@ -462,7 +483,8 @@ export function LaunchDetails ({navigation, route}) {
                 [
                     null,
                     { dx: pan.x, dy: pan.y }
-                ]
+                ],
+                {useNativeDriver: false}
             ),
             /* onPanResponderTerminationRequest: (evt, gestureState) => true, */
             onPanResponderEnd: () => {
@@ -480,7 +502,7 @@ export function LaunchDetails ({navigation, route}) {
             }, */
         })
     ).current;
-    
+
     if ('info' in LaunchCtx.launchData) {
           return(
               <Text>{LaunchCtx.launchData.info}</Text>
@@ -490,23 +512,6 @@ export function LaunchDetails ({navigation, route}) {
               <Text>No Data</Text>
           )
         } else {
-            const localImage = './assets/versXplorerLogo_square_indigo.png';
-            navigation.setOptions({ title: LaunchCtx.launchData.launches[detailsIndex].name,
-                                    headerLeft: () => (
-                                        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-                                            <View style={{paddingLeft: 20, height: '100%', paddingTop: '10%'}}>
-                                                <Image style={{
-                                                        height: '80%',
-                                                        minHeight: 20,
-                                                        width: 20,
-                                                        }}
-                                                        source={require(`${localImage}`)}
-                                                        resizeMethod = 'resize'
-                                                        resizeMode='cover'/>
-                                            </View>
-                                        </TouchableOpacity>
-                                    ),
-                                    });
             const launchDescription: string = LaunchCtx.launchData.launches[detailsIndex].mission_description;
             const d = new Date(LaunchCtx.launchData.launches[detailsIndex].net);
             return (

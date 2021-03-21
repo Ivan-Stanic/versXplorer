@@ -183,3 +183,11 @@ export interface IWeatherData {
     rain: number;
     snow: number;
 }
+
+export interface ILaunchContext {
+    refreshLaunchList () : void;
+    launchData : IAllLaunches;
+    refreshingData: boolean;
+  };
+  
+  

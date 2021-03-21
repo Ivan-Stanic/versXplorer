@@ -7,22 +7,12 @@ import { NavigationContainer} from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StyleSheet, StatusBar, Animated, Alert, Platform } from 'react-native';
 import { SafeAreaProvider} from 'react-native-safe-area-context';
-import {askForData, storeValue, checkRegionUnits} from './commonFunctions';
+import {askForData, storeValue, checkRegionUnits, initialLaunchData, LaunchContext, defaultUnits} from './common';
 import {IAllLaunches} from './Interfaces';
 import {LaunchList} from './LaunchList';
 import {LaunchDetails} from './LaunchDetails';
 import AsyncStorage from '@react-native-community/async-storage';
-import { defaultUnits } from './Constants';
 
-
-export interface ILaunchContext {
-  refreshLaunchList () : void;
-  launchData : IAllLaunches;
-  refreshingData: boolean;
-};
-
-let initialLaunchData: IAllLaunches = {info: 'Connecting...'};
-export let LaunchContext = React.createContext<ILaunchContext>({refreshLaunchList: () => {}, launchData: initialLaunchData, refreshingData: false});
 
 interface IStoredData {
   showSwipeModalOnDetailsPage?: string;
@@ -237,16 +227,4 @@ export default class App extends React.Component<{}, IState> {
     
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    /* flexDirection: 'column', */
-    backgroundColor: 'white',
-  },
-  text: {
-    color: 'darkblue',
-    fontSize: 40,
-  },
-});
 

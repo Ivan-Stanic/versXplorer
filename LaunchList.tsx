@@ -1,10 +1,9 @@
 import React, { useRef, useState, useContext } from 'react';
 import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity, Animated, ScrollView, ActivityIndicator } from 'react-native'
 import { SafeAreaConsumer } from 'react-native-safe-area-context';
-import {LaunchContext, ILaunchContext } from './App';
-import { paddingCorrection } from './Constants';
-import {IAllLaunches} from './Interfaces';
+import {ILaunchContext} from './Interfaces';
 import { useNavigation } from '@react-navigation/native';
+import {LaunchContext, paddingCorrection} from './common';
 
 function ImageSelection ({launchItem}) {
   const localImage = './assets/versXplorerLogo_square_indigo.png';

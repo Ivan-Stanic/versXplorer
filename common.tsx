@@ -1,9 +1,23 @@
 import React from 'react';
+import {IAllLaunches, ILaunchContext} from './Interfaces';
 import AsyncStorage from '@react-native-community/async-storage';
 import * as Cellular from 'expo-cellular';
 import * as Localization from 'expo-localization';
-import { defaultUnits } from './Constants';
-import { Alert } from 'react-native';
+
+
+// Common Constants
+
+export const paddingCorrection: number = 10;
+export const defaultUnits: string = 'metric';
+
+
+// Common Variables
+
+export let initialLaunchData: IAllLaunches = {info: 'Connecting...'};
+export let LaunchContext = React.createContext<ILaunchContext>({refreshLaunchList: () => {}, launchData: initialLaunchData, refreshingData: false});
+
+
+// Common Functions
 
 export async function askForData(url: string) {
     //alert(url);
