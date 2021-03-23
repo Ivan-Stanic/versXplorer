@@ -487,10 +487,10 @@ export function LaunchDetails ({navigation, route}) {
                 {useNativeDriver: false}
             ),
             /* onPanResponderTerminationRequest: (evt, gestureState) => true, */
-            onPanResponderEnd: () => {
-                if (pan.x._value > 50) {
+            onPanResponderEnd: (evt, gestureState) => {
+                if (gestureState.dx > 50) {
                     navigation.push('Details', {index: previousIndex, direction: -1});
-                } else if (pan.x._value < -50) {
+                } else if (gestureState.dx < -50) {
                     navigation.push('Details', {index: nextIndex, direction: 1});
                 }
                 setScrollEnabler(true);
