@@ -1,13 +1,12 @@
 import React, { useRef, useContext, useLayoutEffect, useEffect, useState } from 'react';
-import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform, Modal, Picker } from 'react-native'
+import { StyleSheet, View, Image, Text, PanResponder, Animated, TouchableOpacity, Dimensions, ScrollView, Button, Alert, Linking, Platform, Modal } from 'react-native'
 import {getStoredValue, storeValue, removeItem, checkRegionUnits, LaunchContext, paddingCorrection, defaultUnits} from './common';
 import {ILaunchContext} from './Interfaces';
-import { SafeAreaConsumer } from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import { FontAwesome, MaterialIcons, SimpleLineIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView from 'react-native-maps';
 import { Marker } from 'react-native-maps';
-import { HeaderBackButton } from '@react-navigation/stack';
-
+import {Picker} from '@react-native-picker/picker';
 
 function ShowMap ({launchItem}) {
 
@@ -380,6 +379,8 @@ function Countdown (props: ICtDwnProps) {
 
 export function LaunchDetails ({navigation, route}) {
 
+    const insets = useSafeAreaInsets();
+
     const LaunchCtx: ILaunchContext = useContext(LaunchContext);
 
     const { index } = route.params;
@@ -419,10 +420,10 @@ export function LaunchDetails ({navigation, route}) {
                 duration: 1,
                 useNativeDriver: false})
         ]).start();
-      });
+    });
 
-      // Component Did Mount event
-      useEffect(() => {
+    // Component Did Mount event
+    useEffect(() => {
         
         // Check should Instructions Modal be visible or not
         async function readStoredModalVisibilityData(key) {
@@ -455,7 +456,7 @@ export function LaunchDetails ({navigation, route}) {
                                 ), 
                                 });
 
-      });
+    });
 
     const [scrollEnabler, setScrollEnabler] = useState(true);
 
@@ -504,20 +505,19 @@ export function LaunchDetails ({navigation, route}) {
     ).current;
 
     if ('info' in LaunchCtx.launchData) {
-          return(
-              <Text>{LaunchCtx.launchData.info}</Text>
-          )
+            return(
+                <Text>{LaunchCtx.launchData.info}</Text>
+            )
         } else if (!(LaunchCtx.launchData)) {
-          return(
-              <Text>No Data</Text>
-          )
+            return(
+                <Text>No Data</Text>
+            )
         } else {
             const launchDescription: string = LaunchCtx.launchData.launches[detailsIndex].mission_description;
             const d = new Date(LaunchCtx.launchData.launches[detailsIndex].net);
             return (
                 <View style={styles.container}>
-                    <SafeAreaConsumer>{insets => 
-                            <Animated.ScrollView style={[
+                    <Animated.ScrollView style={[
                                 { paddingRight: insets.right + paddingCorrection,
                                     paddingLeft: insets.left + paddingCorrection,
                                     flex: 1, flexDirection: 'column',
@@ -568,8 +568,7 @@ export function LaunchDetails ({navigation, route}) {
                                 <WeatherContainer launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <ShowMap launchItem = {LaunchCtx.launchData.launches[detailsIndex]}/>
                                 <View style={{height: insets.bottom,}}></View>
-                            </Animated.ScrollView>}
-                    </SafeAreaConsumer>
+                            </Animated.ScrollView>
                 </View>
             );
         }

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useContext } from 'react';
 import { StyleSheet, View, Image, Text, FlatList, TouchableOpacity, Animated, ScrollView, ActivityIndicator } from 'react-native'
-import { SafeAreaConsumer } from 'react-native-safe-area-context';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ILaunchContext} from './Interfaces';
 import { useNavigation } from '@react-navigation/native';
 import {LaunchContext, paddingCorrection} from './common';
@@ -34,6 +34,8 @@ function LaunchItem({launchItem}) {
 // {width: 0, flexGrow: 1} makes sure that <View component takes 100% of the remaining space, at least in this settings. Not sure how it works
 
 export function LaunchList () {
+
+  const insets = useSafeAreaInsets();
   
   const LaunchCtx: ILaunchContext = useContext(LaunchContext);
 
@@ -50,19 +52,16 @@ export function LaunchList () {
   } else {
     
     return (
-      <SafeAreaConsumer>{insets => 
-                          <FlatList style={[
-                                      styles.container, 
-                                      { paddingRight: insets.right + paddingCorrection,
-                                          paddingLeft: insets.left + paddingCorrection }]}
-                                data={LaunchCtx.launchData.launches}
-                                renderItem={({ item, index }) => <LaunchItem launchItem = {{item: item, index: index}} />}
-                                ListFooterComponent={<View style={{height: insets.bottom,}}></View>}
-                                refreshing={LaunchCtx.refreshingData}
-                                onRefresh={LaunchCtx.refreshLaunchList}
-                            />
-                          }
-          </SafeAreaConsumer>
+      <FlatList style={[
+                      styles.container, 
+                      { paddingRight: insets.right + paddingCorrection,
+                          paddingLeft: insets.left + paddingCorrection }]}
+                data={LaunchCtx.launchData.launches}
+                renderItem={({ item, index }) => <LaunchItem launchItem = {{item: item, index: index}} />}
+                ListFooterComponent={<View style={{height: insets.bottom,}}></View>}
+                refreshing={LaunchCtx.refreshingData}
+                onRefresh={LaunchCtx.refreshLaunchList}
+            />
     )
   }
 
